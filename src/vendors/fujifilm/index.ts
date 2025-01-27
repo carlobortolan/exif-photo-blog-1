@@ -42,9 +42,25 @@ type FujifilmMode =
   'nostalgic-neg' |
   'reala';
 
+type CustomMode =
+  'portra-400' |
+  'portra-800' |
+  'hp5-400' |
+  'apx-100' |
+  'c-200' |
+  'gold-200' |  
+  'ektar-100' |
+  'superia-400' |
+  'velvia-50' |
+  'trix-400' |
+  'proimage-100' |
+  'ultramax-400' |
+  'ektachrome-100';
+
 export type FujifilmSimulation =
   FujifilmSimulationFromSaturation |
-  FujifilmMode;
+  FujifilmMode |
+  CustomMode;
 
 export const isExifForFujifilm = (data: ExifData) =>
   data.tags?.Make === MAKE_FUJIFILM;
@@ -217,6 +233,71 @@ const FILM_SIMULATION_LABELS: Record<
     small: 'REALA',
     medium: 'REALA ACE',
     large: 'REALA ACE',
+  },
+  'portra-400': {
+    small: 'Portra 400',
+    medium: 'Portra 400',
+    large: 'Kodak Portra 400',
+  },
+  'portra-800': {
+    small: 'Portra 800',
+    medium: 'Portra 800',
+    large: 'Kodak Portra 800',
+  },
+  'hp5-400': {
+    small: 'HP5 400',
+    medium: 'HP5 400',
+    large: 'Ilford HP5 Plus 400',
+  },
+  'apx-100': {
+    small: 'APX 100',
+    medium: 'APX 100',
+    large: 'Agfa APX 100',
+  },
+  'c-200': {
+    small: 'C200',
+    medium: 'Color 200',
+    large: 'Fujifilm Color 200',
+  },
+  'gold-200': {
+    small: 'Gold 200',
+    medium: 'Gold 200',
+    large: 'Kodak Gold 200',
+  },
+  'ektar-100': {
+    small: 'Ektar 100',
+    medium: 'Ektar 100',
+    large: 'Kodak Ektar 100',
+  },
+  'superia-400': {
+    small: 'Superia 400',
+    medium: 'Superia 400',
+    large: 'Fujifilm Superia X-TRA 400',
+  },
+  'velvia-50': {
+    small: 'Velvia 50',
+    medium: 'Velvia 50',
+    large: 'Fujifilm Velvia 50',
+  },
+  'trix-400': {
+    small: 'Tri-X 400',
+    medium: 'Tri-X 400',
+    large: 'Kodak Tri-X 400',
+  },
+  'proimage-100': {
+    small: 'ProImage 100',
+    medium: 'ProImage 100',
+    large: 'Kodak ProImage 100',
+  },
+  'ultramax-400': {
+    small: 'UltraMax 400',
+    medium: 'UltraMax 400',
+    large: 'Kodak UltraMax 400',
+  },
+  'ektachrome-100': {
+    small: 'Ektachrome 100',
+    medium: 'Ektachrome 100',
+    large: 'Kodak Ektachrome 100',
   },
 };
 
