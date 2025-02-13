@@ -55,7 +55,12 @@ type CustomMode =
   'trix-400' |
   'proimage-100' |
   'ultramax-400' |
-  'ektachrome-100';
+  'ektachrome-100' |
+  'cinestill-800t' |
+  'silbersalz-50d' |
+  'silbersalz-200t' |
+  'silbersalz-250d' |
+  'silbersalz-500t';
 
 export type FujifilmSimulation =
   FujifilmSimulationFromSaturation |
@@ -298,6 +303,31 @@ const FILM_SIMULATION_LABELS: Record<
     small: 'Ektachrome 100',
     medium: 'Kodak Ektachrome 100',
     large: 'Kodak Ektachrome 100',
+  },
+  'cinestill-800t': {
+    small: 'CineStill 800T',
+    medium: 'CineStill 800T',
+    large: 'CineStill 800T ',
+  },
+  'silbersalz-50d': {
+    small: 'Silbersalz 50D',
+    medium: 'Silbersalz 50D',
+    large: 'Silbersalz 50D',
+  },
+  'silbersalz-200t': {
+    small: 'Silbersalz 200T',
+    medium: 'Silbersalz 200T',
+    large: 'Silbersalz 200T',
+  },
+  'silbersalz-250d': {
+    small: 'Silbersalz 250D',
+    medium: 'Silbersalz 250D',
+    large: 'Silbersalz 250D',
+  },
+  'silbersalz-500t': {
+    small: 'Silbersalz 500T',
+    medium: 'Silbersalz 500T',
+    large: 'Silbersalz 500T',
   },
 };
 
