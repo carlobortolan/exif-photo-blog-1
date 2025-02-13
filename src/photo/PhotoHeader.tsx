@@ -81,7 +81,7 @@ export default function PhotoHeader({
     selectedPhoto !== undefined &&
       <PhotoLink
         photo={selectedPhoto}
-        className="uppercase font-bold text-ellipsis truncate"
+        className="uppercase font-bold truncate"
       >
         {titleForPhoto(selectedPhoto, true)}
       </PhotoLink>);
@@ -112,17 +112,22 @@ export default function PhotoHeader({
                 ? 'col-span-2 sm:col-span-1 lg:col-span-2'
                 : 'col-span-2 sm:col-span-1'
               : isGridHighDensity
-                ? 'col-span-3 sm:col-span-3 lg:col-span-5'
-                : 'col-span-3 md:col-span-2 lg:col-span-3',
+                ? 'col-span-3 sm:col-span-3 lg:col-span-5 w-[110%] xl:w-full'
+                : 'col-span-3 md:col-span-2 lg:col-span-3 w-[110%] xl:w-full',
         )}>
           {headerType === 'photo-detail-with-entity'
             ? renderContentA()
-            : <h1>{renderContentA()}</h1>}
+            // Necessary for title truncation
+            : <h1 className={clsx(
+              'w-full truncate',
+              headerType !== 'photo-detail' && 'pr-1 sm:pr-2',
+            )}>
+              {renderContentA()}
+            </h1>}
         </div>
         {/* Content B: Filter Set Meta or Photo Pagination */}
         <div className={clsx(
-          'inline-flex',
-          'gap-2 self-start',
+          'inline-flex gap-2 self-start',
           'uppercase text-dim',
           headerType === 'photo-set'
             ? isGridHighDensity
@@ -132,7 +137,7 @@ export default function PhotoHeader({
               ? isGridHighDensity
                 ? 'sm:col-span-2 lg:col-span-3'
                 : 'sm:col-span-2 md:col-span-1 lg:col-span-2'
-              : 'hidden',
+              : 'hidden!',
         )}>
           {entity && <>
             {headerType === 'photo-set'

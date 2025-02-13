@@ -79,7 +79,7 @@ export default function ImageInput({
             ref={inputRef}
             id={INPUT_ID}
             type="file"
-            className="!hidden"
+            className="hidden!"
             accept={ACCEPTED_PHOTO_FILE_TYPES.join(',')}
             disabled={loading}
             multiple
@@ -222,7 +222,7 @@ export default function ImageInput({
           />
         </label>
         {showUploadStatus && filesLength > 0 &&
-          <div className="max-w-full truncate text-ellipsis">
+          <div className="max-w-full truncate">
             {fileUploadName}
           </div>}
       </div>

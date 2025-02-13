@@ -33,12 +33,13 @@ import {
 import AdminPhotoMenuClient from '@/admin/AdminPhotoMenuClient';
 import { RevalidatePhoto } from './InfinitePhotoScroll';
 import { useRef } from 'react';
-import useOnVisible from '@/utility/useOnVisible';
+import useVisible from '@/utility/useVisible';
 import PhotoDate from './PhotoDate';
 import { useAppState } from '@/state/AppState';
-import useImageZoomControls from '@/components/image/useImageZoomControls';
 import { LuExpand } from 'react-icons/lu';
 import LoaderButton from '@/components/primitives/LoaderButton';
+import Tooltip from '@/components/Tooltip';
+import ZoomControls, { ZoomControlsRef } from '@/components/image/ZoomControls';
 
 export default function PhotoLarge({
   photo,
@@ -84,7 +85,8 @@ export default function PhotoLarge({
   onVisible?: () => void
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const refZoomControlsContainer = useRef<HTMLDivElement>(null);
+
+  const zoomControlsRef = useRef<ZoomControlsRef>(null);
 
   const {
     areZoomControlsShown,
@@ -102,13 +104,7 @@ export default function PhotoLarge({
   const showTagsContent = tags.length > 0;
   const showExifContent = shouldShowExifDataForPhoto(photo);
 
-  useOnVisible(ref, onVisible);
-
-  const { open } = useImageZoomControls(
-    refZoomControlsContainer,
-    showZoomControls,
-    shouldZoomOnFKeydown,
-  );
+  useVisible({ ref, onVisible });
 
   const hasTitle =
     showTitle &&
@@ -130,7 +126,7 @@ export default function PhotoLarge({
   const renderPhotoLink = () =>
     <PhotoLink
       photo={photo}
-      className="font-bold uppercase flex-grow"
+      className="font-bold uppercase grow"
       prefetch={prefetch}
     />;
 
@@ -151,9 +147,9 @@ export default function PhotoLarge({
       arePhotosMatted && 'h-[90%]',
       arePhotosMatted && matteContentWidthForAspectRatio(),
     )}>
-      <div
-        ref={refZoomControlsContainer}
-        className={clsx('h-full', showZoomControls && 'cursor-zoom-in')}
+      <ZoomControls
+        ref={zoomControlsRef}
+        {...{ isEnabled: showZoomControls, shouldZoomOnFKeydown }}
       >
         <ImageLarge
           className={clsx(arePhotosMatted && 'h-full')}
@@ -166,11 +162,11 @@ export default function PhotoLarge({
           blurCompatibilityMode={doesPhotoNeedBlurCompatibility(photo)}
           priority={priority}
         />
-      </div>
+      </ZoomControls>
     </div>;
 
   const largePhotoContainerClassName = clsx(arePhotosMatted &&
-    'flex items-center justify-center aspect-[3/2] bg-gray-100',
+    'flex items-center justify-center aspect-3/2 bg-gray-100',
   );
 
   return (
@@ -253,15 +249,24 @@ export default function PhotoLarge({
                       >
                         {photo.focalLengthFormatted}
                       </Link>}
-                    {photo.focalLengthIn35MmFormatFormatted &&
+                    {(
+                      photo.focalLengthIn35MmFormatFormatted &&
+                      // eslint-disable-next-line max-len
+                      photo.focalLengthIn35MmFormatFormatted !== photo.focalLengthFormatted
+                    ) &&
                       <>
                         {' '}
-                        <span
-                          title="35mm equivalent"
-                          className="text-extra-dim"
-                        >
-                          {photo.focalLengthIn35MmFormatFormatted}
-                        </span>
+                        <Tooltip content="35mm equivalent" sideOffset={3}>
+                          <span
+                            className={clsx(
+                              'text-extra-dim',
+                              'decoration-dotted underline-offset-[3px]',
+                              'hover:underline',
+                            )}
+                          >
+                            {photo.focalLengthIn35MmFormatFormatted}
+                          </span>
+                        </Tooltip>
                       </>}
                   </li>
                   <li>{photo.fNumberFormatted}</li>
@@ -276,10 +281,8 @@ export default function PhotoLarge({
                   />}
               </>}
             <div className={clsx(
-              'flex gap-x-2.5 gap-y-baseline',
-              ALLOW_PUBLIC_DOWNLOADS
-                ? 'flex-col'
-                : 'md:flex-col',
+              'flex gap-x-3 gap-y-baseline',
+              'md:flex-col flex-wrap',
               'md:justify-normal',
             )}>
               <PhotoDate
@@ -289,23 +292,21 @@ export default function PhotoLarge({
                   // Prevent collision with admin button
                   !hasNonDateContent && isUserSignedIn && 'md:pr-7',
                 )}
-                // Created at is a naive datetime which
+                // 'createdAt' is a naive datetime which
                 // does not require a timezone and will not
-                // cause server/client time mismatch
+                // cause server/client time mismatches
                 timezone={null}
                 hideTime={!SHOW_TAKEN_AT_TIME}
               />
               <div className={clsx(
                 'flex gap-1 translate-y-[0.5px]',
-                ALLOW_PUBLIC_DOWNLOADS
-                  ? 'translate-x-[-2.5px]'
-                  : 'md:translate-x-[-2.5px]',
+                'translate-x-[-2.5px]',
               )}>
                 {showZoomControls &&
                   <LoaderButton
                     title="Open Image Viewer"
                     icon={<LuExpand size={15} />}
-                    onClick={open}
+                    onClick={() => zoomControlsRef.current?.open()}
                     styleAs="link"
                     className="text-medium translate-y-[0.25px]"
                     hideFocusOutline
@@ -316,17 +317,17 @@ export default function PhotoLarge({
                     photo={photo}
                     tag={shouldShareTag ? primaryTag : undefined}
                     camera={shouldShareCamera ? camera : undefined}
-                    // eslint-disable-next-line max-len
-                    simulation={shouldShareSimulation? photo.filmSimulation : undefined}
-                    // eslint-disable-next-line max-len
-                    focal={shouldShareFocalLength ? photo.focalLength : undefined}
+                    simulation={shouldShareSimulation
+                      ? photo.filmSimulation
+                      : undefined}
+                    focal={shouldShareFocalLength
+                      ? photo.focalLength
+                      : undefined}
                     prefetch={prefetchRelatedLinks}
                   />}
                 {ALLOW_PUBLIC_DOWNLOADS && 
                   <DownloadButton 
-                    className={clsx(
-                      'translate-y-[0.5px] md:translate-y-0',
-                    )}
+                    className="translate-y-[0.5px] md:translate-y-0"
                     photo={photo} 
                   />}
               </div>

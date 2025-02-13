@@ -9,6 +9,7 @@ import {
   getPhoto,
   getPhotos,
   addTagsToPhotos,
+  getUniqueTags,
 } from '@/photo/db/query';
 import { GetPhotosOptions, areOptionsSensitive } from './db';
 import {
@@ -37,7 +38,7 @@ import { blurImageFromUrl, extractImageDataFromBlobPath } from './server';
 import { TAG_FAVS, isTagFavs } from '@/tag';
 import { convertPhotoToPhotoDbInsert, Photo } from '.';
 import { runAuthenticatedAdminServerAction } from '@/auth';
-import { AI_IMAGE_QUERIES, AiImageQuery } from './ai';
+import { AiImageQuery, getAiImageQuery } from './ai';
 import { streamOpenAiImageQuery } from '@/services/openai';
 import {
   AI_TEXT_AUTO_GENERATED_FIELDS,
@@ -394,8 +395,13 @@ export const streamAiImageQueryAction = async (
   imageBase64: string,
   query: AiImageQuery,
 ) =>
-  runAuthenticatedAdminServerAction(() =>
-    streamOpenAiImageQuery(imageBase64, AI_IMAGE_QUERIES[query]));
+  runAuthenticatedAdminServerAction(async () => {
+    const existingTags = await getUniqueTags();
+    return streamOpenAiImageQuery(
+      imageBase64,
+      getAiImageQuery(query, existingTags),
+    );
+  });
 
 export const getImageBlurAction = async (url: string) =>
   runAuthenticatedAdminServerAction(() => blurImageFromUrl(url));
@@ -406,15 +412,31 @@ export const getPhotosHiddenMetaCachedAction = async () =>
 
 // Public/Private actions
 
-export const getPhotosAction = async (options: GetPhotosOptions) =>
-  areOptionsSensitive(options)
-    ? runAuthenticatedAdminServerAction(() => getPhotos(options))
-    : getPhotos(options);
+export const getPhotosAction = async (
+  options: GetPhotosOptions,
+  warmOnly?: boolean,
+) => {
+  if (warmOnly) {
+    return [];
+  } else {
+    return areOptionsSensitive(options)
+      ? runAuthenticatedAdminServerAction(() => getPhotos(options))
+      : getPhotos(options);
+  }
+};
 
-export const getPhotosCachedAction = async (options: GetPhotosOptions) =>
-  areOptionsSensitive(options)
-    ? runAuthenticatedAdminServerAction(() => getPhotosCached(options))
-    : getPhotosCached(options);
+export const getPhotosCachedAction = async (
+  options: GetPhotosOptions,
+  warmOnly?: boolean,
+) => {
+  if (warmOnly) {
+    return [];
+  } else {
+    return areOptionsSensitive(options)
+      ? runAuthenticatedAdminServerAction(() => getPhotosCached(options))
+      : getPhotosCached(options);
+  }
+};
 
 // Public actions
 
