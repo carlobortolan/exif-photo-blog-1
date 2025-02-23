@@ -77,7 +77,7 @@ _⚠️ READ BEFORE PROCEEDING_
    - Generate an API key and store in environment variable `OPENAI_SECRET_KEY`
    - Setup usage limits to avoid unexpected charges (_recommended_)
 2. Add rate limiting (_recommended_)
-   - As an additional precaution, create a [Vercel KV](https://vercel.com/docs/storage/vercel-kv/quickstart#create-a-kv-database) store and link it to your project in order to enable rate limiting—no further configuration necessary
+   - As an additional precaution, create an Upstash Redis store from the storage tab of the Vercel dashboard and link it to your project in order to enable rate limiting—no further configuration necessary
 3. Configure auto-generated fields (optional) 
    - Set which text fields auto-generate when uploading a photo by storing a comma-separated list, e.g., `AI_TEXT_AUTO_GENERATED_FIELDS = title, semantic`
    - Accepted values:
@@ -122,7 +122,7 @@ Application behavior can be changed by configuring the following environment var
 #### Visual
 
 - `NEXT_PUBLIC_DEFAULT_THEME = light | dark` sets preferred initial theme (defaults to `system` when not configured)
-- `NEXT_PUBLIC_MATTE_PHOTOS = 1` constrains the size of each photo, and display a surrounding border (potentially useful for photos with tall aspect ratios)
+- `NEXT_PUBLIC_MATTE_PHOTOS = 1` constrains the size of each photo, and displays a surrounding border (potentially useful for photos with tall aspect ratios)
 
 #### Display
 - `NEXT_PUBLIC_HIDE_EXIF_DATA = 1` hides EXIF data in photo details and OG images (potentially useful for portfolios, which don't focus on photography)
@@ -302,3 +302,6 @@ Vercel Postgres can be switched to another Postgres-compatible, pooling provider
 
 #### Can this template run in a docker image?
 > Possibly. See [Issue #116](https://github.com/sambecker/exif-photo-blog/issues/116) for discussion.
+
+#### Why am I seeing many merge conflicts when syncing my fork?
+> Previous versions of this template stored Next.js "App Router" files in `/src`, and app-level functionality in `/src/site`. If you've made customizations and are having difficulty merging updates, consider moving `/src/app` files to `/`, and renaming `src/site` to `/src/app`. Other structural changes include moving `tailwind.css` and `middleware.ts` to `/`. Additionally, it may be helpful to review [PR #195](https://github.com/sambecker/exif-photo-blog/pull/195) for an overview of the most significant changes.

@@ -8,7 +8,7 @@ import {
   absolutePathForTag,
   absolutePathForTagImage,
   getPathComponents,
-} from '@/site/paths';
+} from '@/app/paths';
 import {
   capitalizeWords,
   convertStringToArray,

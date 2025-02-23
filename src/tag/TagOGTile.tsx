@@ -1,5 +1,5 @@
 import { Photo, PhotoDateRange } from '@/photo';
-import { absolutePathForTagImage, pathForTag } from '@/site/paths';
+import { absolutePathForTagImage, pathForTag } from '@/app/paths';
 import OGTile from '@/components/OGTile';
 import { descriptionForTaggedPhotos, titleForTag } from '.';
 

@@ -5,7 +5,7 @@ import {
   absolutePathForFocalLengthImage,
   absolutePathForPhotoImage,
   absolutePathForTagImage,
-} from '@/site/paths';
+} from '@/app/paths';
 
 export type ShareModalProps = Omit<PhotoSetAttributes, 'photos'> & {
   photo?: Photo

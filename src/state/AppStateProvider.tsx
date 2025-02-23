@@ -8,12 +8,15 @@ import { getAuthAction } from '@/auth/actions';
 import useSWR from 'swr';
 import {
   HIGH_DENSITY_GRID,
+  IS_DEVELOPMENT,
   MATTE_PHOTOS,
   SHOW_ZOOM_CONTROLS,
-} from '@/site/config';
+} from '@/app/config';
 import { getPhotosHiddenMetaCachedAction } from '@/photo/actions';
 import { ShareModalProps } from '@/share';
 import { storeTimezoneCookie } from '@/utility/timezone';
+import { getShouldShowInsightsIndicatorAction } from '@/admin/insights/actions';
+import { InsightIndicatorStatus } from '@/admin/insights';
 
 export default function AppStateProvider({
   children,
@@ -47,6 +50,8 @@ export default function AppStateProvider({
     useState<string[] | undefined>();
   const [isPerformingSelectEdit, setIsPerformingSelectEdit] =
     useState(false);
+  const [insightIndicatorStatus, setInsightIndicatorStatus] =
+    useState<InsightIndicatorStatus>();
   // DEBUG
   const [isGridHighDensity, setIsGridHighDensity] =
     useState(HIGH_DENSITY_GRID);
@@ -58,6 +63,8 @@ export default function AppStateProvider({
     useState(false);
   const [shouldShowBaselineGrid, setShouldShowBaselineGrid] =
     useState(false);
+  const [shouldDebugInsights, setShouldDebugInsights] =
+    useState(IS_DEVELOPMENT);
 
   const invalidateSwr = useCallback(() => setSwrTimestamp(Date.now()), []);
 
@@ -70,10 +77,12 @@ export default function AppStateProvider({
   const isUserSignedIn = Boolean(userEmail);
   useEffect(() => {
     if (isUserSignedIn) {
-      const timeout = setTimeout(() =>
-        getPhotosHiddenMetaCachedAction().then(({ count }) =>
-          setHiddenPhotosCount(count))
-      , 100);
+      const timeout = setTimeout(() =>{
+        getPhotosHiddenMetaCachedAction()
+          .then(({ count }) => setHiddenPhotosCount(count));
+        getShouldShowInsightsIndicatorAction()
+          .then(setInsightIndicatorStatus);
+      }, 100);
       return () => clearTimeout(timeout);
     } else {
       setHiddenPhotosCount(0);
@@ -119,6 +128,8 @@ export default function AppStateProvider({
         setSelectedPhotoIds,
         isPerformingSelectEdit,
         setIsPerformingSelectEdit,
+        insightIndicatorStatus,
+        setInsightIndicatorStatus,
         // DEBUG
         isGridHighDensity,
         setIsGridHighDensity,
@@ -130,6 +141,8 @@ export default function AppStateProvider({
         setShouldDebugImageFallbacks,
         shouldShowBaselineGrid,
         setShouldShowBaselineGrid,
+        shouldDebugInsights,
+        setShouldDebugInsights,
       }}
     >
       {children}
