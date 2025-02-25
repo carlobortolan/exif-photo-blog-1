@@ -101,10 +101,7 @@ export default function PhotoForm({
 
       if (changedKeys.length > 0) {
         const fields = convertFormKeysToLabels(changedKeys);
-        toastSuccess(
-          `Updated EXIF fields: ${fields.join(', ')}`,
-          8000,
-        );
+        toastSuccess(`Updated EXIF fields: ${fields.join(', ')}`, 8000);
       } else {
         toastWarning('No new EXIF data found');
       }
@@ -308,6 +305,7 @@ export default function PhotoForm({
               readOnly,
               validate,
               validateStringMaxLength,
+              spellCheck,
               capitalize,
               hideIfEmpty,
               shouldHide,
@@ -349,6 +347,7 @@ export default function PhotoForm({
                   tagOptions={tagOptions}
                   required={required}
                   readOnly={readOnly}
+                  spellCheck={spellCheck}
                   capitalize={capitalize}
                   placeholder={loadingMessage && !formData[key]
                     ? loadingMessage

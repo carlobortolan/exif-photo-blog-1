@@ -321,7 +321,7 @@ export default function AdminAppInsightsClient({
                 default view to grid by setting
                 {' '}
                 <EnvVar
-                  variable="NEXT_PUBLIC_GRID_HOMEPAGE_ENABLED"
+                  variable="NEXT_PUBLIC_GRID_HOMEPAGE"
                   value="1"
                   trailingContent="."
                 />
@@ -342,8 +342,10 @@ export default function AdminAppInsightsClient({
             )}
           />}
           content={renderHighlightText(
-            // eslint-disable-next-line max-len
-            pluralize(photosCountOutdated || DEBUG_PHOTOS_COUNT_OUTDATED, 'outdated photo'),
+            pluralize(
+              photosCountOutdated || DEBUG_PHOTOS_COUNT_OUTDATED,
+              'outdated photo',
+            ),
             'yellow',
           )}
           expandPath={PATH_ADMIN_OUTDATED}
