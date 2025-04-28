@@ -5,12 +5,14 @@ import CopyButton from './CopyButton';
 export default function EnvVar({
   variable,
   value,
+  accessory,
   includeCopyButton = true,
   trailingContent,
   className,
 }: {
   variable: string,
   value?: string,
+  accessory?: ReactNode,
   includeCopyButton?: boolean,
   trailingContent?: ReactNode,
   className?: string,
@@ -33,14 +35,20 @@ export default function EnvVar({
         )}>
           {variable}{value && ` = ${value}`}
         </span>
+        {accessory}
         {includeCopyButton &&
-          <CopyButton
-            className="translate-y-[0.5px]"
-            label={variable}
-            text={variable}
-            subtle
-          />}
-        {trailingContent}
+          <span className="translate-y-[1px]">
+            <CopyButton
+              className=""
+              label={variable}
+              text={variable}
+              subtle
+            />
+          </span>}
+        {trailingContent &&
+          <span className="-ml-0.5">
+            {trailingContent}
+          </span>}
       </span>
     </div>
   );

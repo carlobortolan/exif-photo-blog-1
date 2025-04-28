@@ -19,9 +19,12 @@ export const getFocalLengthFromString = (focalString?: string) => {
   return focal ? parseInt(focal, 10) : 0;
 };
 
-export const formatFocalLength = (focal?: number) => focal ?
-  `${focal}mm`
+export const formatFocalLength = (focal?: number) => focal
+  ? formatFocalLengthSafe(focal)
   : undefined;
+
+export const formatFocalLengthSafe = (focal = 0) =>
+  `${focal}mm`;
 
 export const titleForFocalLength = (
   focal: number,
@@ -65,3 +68,6 @@ export const generateMetaForFocalLength = (
   ),
   images: absolutePathForFocalLengthImage(focal),
 });
+
+export const sortFocalLengths = (focalLengths: FocalLengths) =>
+  focalLengths.sort((a, b) => a.focal - b.focal);

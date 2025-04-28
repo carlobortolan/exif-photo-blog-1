@@ -2,13 +2,12 @@ import { generateMetaForFocalLength, getFocalLengthFromString } from '@/focal';
 import FocalLengthOverview from '@/focal/FocalLengthOverview';
 import { getPhotosFocalLengthDataCached } from '@/focal/data';
 import { INFINITE_SCROLL_GRID_INITIAL } from '@/photo';
-import { IS_PRODUCTION } from '@/app/config';
 import { getUniqueFocalLengths } from '@/photo/db/query';
-import { STATICALLY_OPTIMIZED_PHOTO_CATEGORIES } from '@/app/config';
 import { PATH_ROOT } from '@/app/paths';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
+import { staticallyGenerateCategoryIfConfigured } from '@/app/static';
 
 const getPhotosFocalDataCachedCached = cache((focal: number) =>
   getPhotosFocalLengthDataCached({
@@ -16,15 +15,13 @@ const getPhotosFocalDataCachedCached = cache((focal: number) =>
     limit: INFINITE_SCROLL_GRID_INITIAL,
   }));
 
-export let generateStaticParams:
-  (() => Promise<{ focal: string }[]>) | undefined = undefined;
-
-if (STATICALLY_OPTIMIZED_PHOTO_CATEGORIES && IS_PRODUCTION) {
-  generateStaticParams = async () => {
-    const focalLengths = await getUniqueFocalLengths();
-    return focalLengths.map(({ focal }) => ({ focal: focal.toString() }));
-  };
-}
+export const generateStaticParams = staticallyGenerateCategoryIfConfigured(
+  'focal-lengths',
+  'page',
+  getUniqueFocalLengths,
+  focalLengths => focalLengths
+    .map(({ focal }) => ({ focal: focal.toString() })),
+);
 
 interface FocalLengthProps {
   params: Promise<{ focal: string }>

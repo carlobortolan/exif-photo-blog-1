@@ -15,6 +15,7 @@ import {
   formatCount,
   formatCountDescriptive,
 } from '@/utility/string';
+import { sortCategoryByCount } from '@/category';
 
 // Reserved tags
 export const TAG_FAVS   = 'favs';
@@ -49,25 +50,42 @@ export const titleForTag = (
 export const shareTextForTag = (tag: string) =>
   isTagFavs(tag) ? 'Favorite photos' : `Photos tagged '${formatTag(tag)}'`;
 
-export const sortTags = (
+export const sortTagsArray = (
   tags: string[],
-  tagToHide?: string,
+  tagToExclude?: string,
 ) => tags
-  .filter(tag => tag !== tagToHide)
+  .filter(tag => tag !== tagToExclude)
   .sort((a, b) => isTagFavs(a) ? -1 : a.localeCompare(b));
 
-export const sortTagsObject = (
+export const sortTags = (
   tags: Tags,
-  tagToHide?: string,
+  tagToExclude?: string,
 ) => tags
-  .filter(({ tag }) => tag!== tagToHide)
-  .sort(({ tag: a }, { tag: b }) => isTagFavs(a) ? -1 : a.localeCompare(b));
+  .filter(({ tag }) => tag!== tagToExclude)
+  .sort(({ tag: a }, { tag: b }) =>
+    isTagFavs(a)
+      ? -1
+      : isTagFavs(b)
+        ? 1
+        : a.localeCompare(b));
+
+export const sortTagsByCount = (
+  tags: Tags,
+  tagToExclude?: string,
+) => tags
+  .filter(({ tag }) => tag !== tagToExclude)
+  .sort(({ tag: tagA, count: countA }, { tag: tagB, count: countB }) =>
+    isTagFavs(tagA)
+      ? -1
+      : isTagFavs(tagB)
+        ? 1
+        : countB - countA);
 
 export const sortTagsWithoutFavs = (tags: string[]) =>
-  sortTags(tags, TAG_FAVS);
+  sortTagsArray(tags, TAG_FAVS);
 
 export const sortTagsObjectWithoutFavs = (tags: Tags) =>
-  sortTagsObject(tags, TAG_FAVS);
+  sortTags(tags, TAG_FAVS);
 
 export const descriptionForTaggedPhotos = (
   photos: Photo[] = [],
@@ -105,16 +123,16 @@ export const isPathFavs = (pathname?: string) =>
 
 export const isTagHidden = (tag: string) => tag.toLowerCase() === TAG_HIDDEN;
 
-export const addHiddenToTags = (tags: Tags, hiddenPhotosCount = 0) => {
-  if (hiddenPhotosCount > 0) {
-    return tags
+export const addHiddenToTags = (tags: Tags, photosCountHidden = 0) =>
+  photosCountHidden > 0
+    ? tags
       .filter(({ tag }) => tag === TAG_FAVS)
-      .concat({ tag: TAG_HIDDEN, count: hiddenPhotosCount })
-      .concat(tags.filter(({ tag }) => tag !== TAG_FAVS));
-  } else {
-    return tags;
-  }
-};
+      .concat({ tag: TAG_HIDDEN, count: photosCountHidden })
+      .concat(tags
+        .filter(({ tag }) => tag !== TAG_FAVS)
+        .sort(sortCategoryByCount),
+      )
+    : tags;
 
 export const convertTagsForForm = (tags: Tags = []) =>
   sortTagsObjectWithoutFavs(tags)

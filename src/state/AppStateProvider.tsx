@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, ReactNode, useCallback } from 'react';
+import { useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { AppStateContext } from './AppState';
 import { AnimationConfig } from '@/components/AnimateItems';
 import usePathnames from '@/utility/usePathnames';
@@ -12,17 +12,32 @@ import {
   MATTE_PHOTOS,
   SHOW_ZOOM_CONTROLS,
 } from '@/app/config';
-import { getPhotosHiddenMetaCachedAction } from '@/photo/actions';
 import { ShareModalProps } from '@/share';
 import { storeTimezoneCookie } from '@/utility/timezone';
-import { getShouldShowInsightsIndicatorAction } from '@/admin/insights/actions';
-import { InsightIndicatorStatus } from '@/admin/insights';
+import { AdminData, getAdminDataAction } from '@/admin/actions';
+import {
+  storeAuthEmailCookie,
+  clearAuthEmailCookie,
+  isCredentialsSignInError,
+  getAuthEmailCookie,
+} from '@/auth';
+import { useRouter, usePathname } from 'next/navigation';
+import { isPathProtected, PATH_ROOT } from '@/app/paths';
+import { INITIAL_UPLOAD_STATE, UploadState } from '@/admin/upload';
+import { RecipeProps } from '@/recipe';
+import { getCountsForCategoriesCachedAction } from '@/category/actions';
+import { nanoid } from 'nanoid';
+import { toastSuccess } from '@/toast';
 
 export default function AppStateProvider({
   children,
 }: {
   children: ReactNode
 }) {
+  const router = useRouter();
+
+  const pathname = usePathname();
+
   const { previousPathname } = usePathnames();
 
   // CORE
@@ -30,8 +45,25 @@ export default function AppStateProvider({
     useState(false);
   const [swrTimestamp, setSwrTimestamp] =
     useState(Date.now());
-  const [nextPhotoAnimation, setNextPhotoAnimation] =
+  const [nextPhotoAnimation, _setNextPhotoAnimation] =
     useState<AnimationConfig>();
+  const setNextPhotoAnimation = useCallback((animation?: AnimationConfig) => {
+    _setNextPhotoAnimation(animation);
+    setNextPhotoAnimationId(undefined);
+  }, []);
+  const [nextPhotoAnimationId, setNextPhotoAnimationId] =
+    useState<string>();
+  const getNextPhotoAnimationId = useCallback(() => {
+    const id = nanoid();
+    setNextPhotoAnimationId(id);
+    return id;
+  }, []);
+  const clearNextPhotoAnimation = useCallback((id?: string) => {
+    if (id === nextPhotoAnimationId) {
+      setNextPhotoAnimation(undefined);
+      setNextPhotoAnimationId(undefined);
+    }
+  }, [nextPhotoAnimationId, setNextPhotoAnimation]);
   const [shouldRespondToKeyboardCommands, setShouldRespondToKeyboardCommands] =
     useState(true);
   // MODAL
@@ -39,19 +71,23 @@ export default function AppStateProvider({
     useState(false);
   const [shareModalProps, setShareModalProps] =
     useState<ShareModalProps>();
-  // ADMIN
+  const [recipeModalProps, setRecipeModalProps] =
+    useState<RecipeProps>();
+  // AUTH
   const [userEmail, setUserEmail] =
     useState<string>();
+  const [userEmailEager, setUserEmailEager] =
+    useState<string>();
+  // ADMIN
   const [adminUpdateTimes, setAdminUpdateTimes] =
     useState<Date[]>([]);
-  const [hiddenPhotosCount, setHiddenPhotosCount] =
-    useState(0);
   const [selectedPhotoIds, setSelectedPhotoIds] =
     useState<string[] | undefined>();
   const [isPerformingSelectEdit, setIsPerformingSelectEdit] =
     useState(false);
-  const [insightIndicatorStatus, setInsightIndicatorStatus] =
-    useState<InsightIndicatorStatus>();
+  // UPLOAD
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const [uploadState, _setUploadState] = useState(INITIAL_UPLOAD_STATE);
   // DEBUG
   const [isGridHighDensity, setIsGridHighDensity] =
     useState(HIGH_DENSITY_GRID);
@@ -68,36 +104,96 @@ export default function AppStateProvider({
   const [shouldDebugRecipeOverlays, setShouldDebugRecipeOverlays] =
     useState(false);
 
+  useEffect(() => {
+    setHasLoaded?.(true);
+    storeTimezoneCookie();
+  }, []);
+
   const invalidateSwr = useCallback(() => setSwrTimestamp(Date.now()), []);
 
-  const { data, error } = useSWR('getAuth', getAuthAction);
+  const { data: categoriesWithCounts } = useSWR(
+    'getDataForCategories',
+    getCountsForCategoriesCachedAction,
+  );
+
+  const {
+    data: auth,
+    error: authError,
+    isLoading: isCheckingAuth,
+  } = useSWR('getAuth', getAuthAction);
   useEffect(() => {
-    if (!error) {
-      setUserEmail(data?.user?.email ?? undefined);
-    }
-  }, [data, error]);
-  const isUserSignedIn = Boolean(userEmail);
+    setUserEmailEager(getAuthEmailCookie());
+  }, []);
   useEffect(() => {
-    if (isUserSignedIn) {
-      const timeout = setTimeout(() =>{
-        getPhotosHiddenMetaCachedAction()
-          .then(({ count }) => setHiddenPhotosCount(count));
-        getShouldShowInsightsIndicatorAction()
-          .then(setInsightIndicatorStatus);
-      }, 100);
-      return () => clearTimeout(timeout);
+    if (authError) {
+      setUserEmail(undefined);
+      setUserEmailEager(undefined);
+      if (isCredentialsSignInError(authError)) {
+        clearAuthEmailCookie();
+      }
     } else {
-      setHiddenPhotosCount(0);
+      setUserEmail(auth?.user?.email ?? undefined);
     }
-  }, [isUserSignedIn]);
+  }, [auth, authError]);
+  const isUserSignedIn = Boolean(userEmail);
+  const isUserSignedInEager = Boolean(userEmailEager);
+
+  const {
+    data: adminData,
+    mutate: refreshAdminData,
+    isLoading: isLoadingAdminData,
+  } = useSWR(
+    isUserSignedIn ? 'getAdminData' : null,
+    getAdminDataAction,
+  );
+  const updateAdminData = useCallback(
+    (updatedData: Partial<AdminData>) => {
+      if (adminData) {
+        refreshAdminData({
+          ...adminData,
+          ...updatedData,
+        });
+      }
+    }, [adminData, refreshAdminData]);
+
+  useEffect(() => {
+    if (userEmail) {
+      storeAuthEmailCookie(userEmail);
+    }
+  }, [userEmail]);
 
   const registerAdminUpdate = useCallback(() =>
     setAdminUpdateTimes(updates => [...updates, new Date()])
   , []);
 
-  useEffect(() => {
-    setHasLoaded?.(true);
-    storeTimezoneCookie();
+  const clearAuthStateAndRedirectIfNecessary = useCallback(() => {
+    setUserEmail(undefined);
+    setUserEmailEager(undefined);
+    clearAuthEmailCookie();
+    if (isPathProtected(pathname)) {
+      router.push(PATH_ROOT);
+    } else {
+      toastSuccess('Signed out');
+    }
+  }, [router, pathname]);
+
+  // Returns false when upload is cancelled
+  const startUpload = useCallback(() => new Promise<boolean>(resolve => {
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = '';
+      uploadInputRef.current.click();
+      uploadInputRef.current.oninput = () => resolve(true);
+      uploadInputRef.current.oncancel = () => resolve(false);
+    } else {
+      resolve(false);
+    }
+  })
+  , []);
+  const setUploadState = useCallback((uploadState: Partial<UploadState>) => {
+    _setUploadState(prev => ({ ...prev, ...uploadState }));
+  }, []);
+  const resetUploadState = useCallback(() => {
+    _setUploadState(INITIAL_UPLOAD_STATE);
   }, []);
 
   return (
@@ -111,27 +207,44 @@ export default function AppStateProvider({
         invalidateSwr,
         nextPhotoAnimation,
         setNextPhotoAnimation,
-        clearNextPhotoAnimation: () => setNextPhotoAnimation?.(undefined),
+        getNextPhotoAnimationId,
+        clearNextPhotoAnimation,
         shouldRespondToKeyboardCommands,
         setShouldRespondToKeyboardCommands,
+        categoriesWithCounts,
         // MODAL
         isCommandKOpen,
         setIsCommandKOpen,
         shareModalProps,
         setShareModalProps,
-        // ADMIN
+        recipeModalProps,
+        setRecipeModalProps,
+        // AUTH
+        isCheckingAuth,
         userEmail,
+        userEmailEager,
         setUserEmail,
         isUserSignedIn,
+        isUserSignedInEager,
+        clearAuthStateAndRedirectIfNecessary,
+        // ADMIN
         adminUpdateTimes,
         registerAdminUpdate,
-        hiddenPhotosCount,
+        ...adminData,
+        hasAdminData: Boolean(adminData),
+        isLoadingAdminData,
+        refreshAdminData,
+        updateAdminData,
         selectedPhotoIds,
         setSelectedPhotoIds,
         isPerformingSelectEdit,
         setIsPerformingSelectEdit,
-        insightIndicatorStatus,
-        setInsightIndicatorStatus,
+        // UPLOAD
+        uploadInputRef,
+        startUpload,
+        uploadState,
+        setUploadState,
+        resetUploadState,
         // DEBUG
         isGridHighDensity,
         setIsGridHighDensity,

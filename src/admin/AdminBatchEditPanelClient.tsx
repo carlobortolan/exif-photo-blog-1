@@ -2,7 +2,7 @@
 
 import Note from '@/components/Note';
 import LoaderButton from '@/components/primitives/LoaderButton';
-import SiteGrid from '@/components/SiteGrid';
+import AppGrid from '@/components/AppGrid';
 import { useAppState } from '@/state/AppState';
 import { clsx } from 'clsx/lite';
 import { IoCloseSharp } from 'react-icons/io5';
@@ -15,8 +15,10 @@ import { tagMultiplePhotosAction } from '@/photo/actions';
 import { toastSuccess } from '@/toast';
 import DeletePhotosButton from './DeletePhotosButton';
 import { photoQuantityText } from '@/photo';
-import { FaArrowDown, FaCheck, FaRegStar } from 'react-icons/fa6';
+import { FaArrowDown, FaCheck } from 'react-icons/fa6';
 import ResponsiveText from '@/components/primitives/ResponsiveText';
+import IconFavs from '@/components/icons/IconFavs';
+import IconTag from '@/components/icons/IconTag';
 
 export default function AdminBatchEditPanelClient({
   uniqueTags,
@@ -49,16 +51,22 @@ export default function AdminBatchEditPanelClient({
     false,
   );
 
-  const renderPhotoCTA = () => selectedPhotoIds?.length === 0
+  const isFormDisabled =
+    isPerformingSelectEdit ||
+    selectedPhotoIds?.length === 0;
+
+  const renderPhotoCTA = selectedPhotoIds?.length === 0
     ? <>
       <FaArrowDown />
-      Select photos below
+      <ResponsiveText shortText="Select below">
+        Select photos below
+      </ResponsiveText>
     </>
     : <ResponsiveText shortText={photosText}>
       {photosText} selected
     </ResponsiveText>;
 
-  const renderActions = () => isInTagMode
+  const renderActions = isInTagMode
     ? <>
       <LoaderButton
         className="min-h-[2.5rem]"
@@ -103,43 +111,39 @@ export default function AdminBatchEditPanelClient({
       </LoaderButton>
     </>
     : <>
-      {(selectedPhotoIds?.length ?? 0) > 0 &&
-        <>
-          <DeletePhotosButton
-            photoIds={selectedPhotoIds}
-            disabled={isPerformingSelectEdit}
-            onClick={() => setIsPerformingSelectEdit?.(true)}
-            onDelete={resetForm}
-            onFinish={() => setIsPerformingSelectEdit?.(false)}
-          />
-          <LoaderButton
-            icon={<FaRegStar />}
-            disabled={isPerformingSelectEdit}
-            confirmText={`Are you sure you want to favorite ${photosText}?`}
-            onClick={() => {
-              setIsPerformingSelectEdit?.(true);
-              tagMultiplePhotosAction(
-                TAG_FAVS,
-                selectedPhotoIds ?? [],
-              )
-                .then(() => {
-                  toastSuccess(`${photosText} favorited`);
-                  resetForm();
-                })
-                .finally(() => setIsPerformingSelectEdit?.(false));
-            }}
-          />
-          <LoaderButton
-            onClick={() => setTags('')}
-            disabled={isPerformingSelectEdit}
-          >
-            <ResponsiveText shortText="Tag">
-              Tag ...
-            </ResponsiveText>
-          </LoaderButton>
-        </>}
+      <DeletePhotosButton
+        photoIds={selectedPhotoIds}
+        disabled={isFormDisabled}
+        onClick={() => setIsPerformingSelectEdit?.(true)}
+        onDelete={resetForm}
+        onFinish={() => setIsPerformingSelectEdit?.(false)}
+      />
       <LoaderButton
-        icon={<IoCloseSharp size={20} className="translate-y-[0.5px]" />}
+        icon={<IconFavs />}
+        disabled={isFormDisabled}
+        confirmText={`Are you sure you want to favorite ${photosText}?`}
+        onClick={() => {
+          setIsPerformingSelectEdit?.(true);
+          tagMultiplePhotosAction(
+            TAG_FAVS,
+            selectedPhotoIds ?? [],
+          )
+            .then(() => {
+              toastSuccess(`${photosText} favorited`);
+              resetForm();
+            })
+            .finally(() => setIsPerformingSelectEdit?.(false));
+        }}
+      />
+      <LoaderButton
+        onClick={() => setTags('')}
+        disabled={isFormDisabled}
+        icon={<IconTag size={15} className="translate-y-[1.5px]" />}
+      >
+        Tag ...
+      </LoaderButton>
+      <LoaderButton
+        icon={<IoCloseSharp size={19} />}
         onClick={() => setSelectedPhotoIds?.(undefined)}
       />
     </>;
@@ -149,13 +153,13 @@ export default function AdminBatchEditPanelClient({
     pathname === PATH_GRID_INFERRED &&
     selectedPhotoIds !== undefined
   )
-    ? <SiteGrid
-      className="sticky top-0 z-10 mb-5 -mt-2 pt-2"
+    ? <AppGrid
+      className="sticky top-0 z-10 -mt-2 pt-2"
       contentMain={<div className="flex flex-col gap-2">
         <Note
           color="gray"
           className={clsx(
-            'min-h-[3.5rem]',
+            'min-h-[3.5rem] pr-2',
             'backdrop-blur-lg border-transparent!',
             'text-gray-900! dark:text-gray-100!',
             'bg-gray-100/90! dark:bg-gray-900/70!',
@@ -164,7 +168,7 @@ export default function AdminBatchEditPanelClient({
           )}
           padding={isInTagMode ? 'tight-cta-right-left' : 'tight-cta-right'}
           cta={<div className="flex items-center gap-1.5 sm:gap-2.5">
-            {renderActions()}
+            {renderActions}
           </div>}
           spaceChildren={false}
           hideIcon
@@ -181,7 +185,7 @@ export default function AdminBatchEditPanelClient({
               hideLabel
             />
             : <div className="text-base flex gap-2 items-center">
-              {renderPhotoCTA()}
+              {renderPhotoCTA}
             </div>}
         </Note>
         {tagErrorMessage &&
