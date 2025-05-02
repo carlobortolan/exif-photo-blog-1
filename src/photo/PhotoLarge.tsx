@@ -287,11 +287,7 @@ export default function PhotoLarge({
       classNameSide="relative"
       contentSide={
         <div className="md:absolute inset-0 -mt-1">
-          <MaskedScroll
-            className="sticky top-4 self-start"
-            fadeHeight={36}
-            hideScrollbar
-          >
+          <MaskedScroll className="sticky top-4 self-start">
             <DivDebugBaselineGrid className={clsx(
               'grid grid-cols-2 md:grid-cols-1',
               'gap-x-0.5 sm:gap-x-1 gap-y-baseline',
@@ -438,7 +434,7 @@ export default function PhotoLarge({
                   )}>
                     {showZoomControls &&
                       <LoaderButton
-                        title="Open Image Viewer"
+                        tooltip="Zoom In"
                         icon={<LuExpand size={15} />}
                         onClick={() => refZoomControls.current?.open()}
                         styleAs="link"
@@ -447,7 +443,7 @@ export default function PhotoLarge({
                       />}
                     {shouldShare &&
                       <ShareButton
-                        title="Share Photo"
+                        tooltip="Share Photo"
                         photo={photo}
                         tag={shouldShareTag ? primaryTag : undefined}
                         camera={shouldShareCamera ? camera : undefined}

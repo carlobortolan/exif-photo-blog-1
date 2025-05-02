@@ -19,11 +19,13 @@ export default function AdminUploadsTable({
   urlAddStatuses,
   setUrlAddStatuses,
   isDeleting,
+  setIsDeleting,
 }: {
   isAdding?: boolean
   urlAddStatuses: UrlAddStatus[]
   setUrlAddStatuses?: (urlAddStatuses: UrlAddStatus[]) => void
   isDeleting?: boolean
+  setIsDeleting?: (isDeleting: boolean) => void
 }) {
   const isComplete = urlAddStatuses.every(({ status }) => status === 'added');
 
@@ -36,7 +38,7 @@ export default function AdminUploadsTable({
             'flex items-center grow',
             'transition-opacity',
             'rounded-md overflow-hidden',
-            'border-main bg-extra-dim',
+            'border-medium bg-extra-dim',
             isAdding && !isComplete && status !== 'adding' && 'opacity-30',
           )}
         >
@@ -96,10 +98,13 @@ export default function AdminUploadsTable({
                   <DeleteBlobButton
                     urls={[url]}
                     shouldRedirectToAdminPhotos={urlAddStatuses.length <= 1}
-                    onDelete={() =>
+                    onDeleteStart={() => setIsDeleting?.(true)}
+                    onDelete={() => {
+                      setIsDeleting?.(false);
                       setUrlAddStatuses?.(urlAddStatuses
                         .filter(({ url: urlToRemove }) =>
-                          urlToRemove !== url))}
+                          urlToRemove !== url));
+                    }}
                     isLoading={isDeleting}
                   />
                 </>}

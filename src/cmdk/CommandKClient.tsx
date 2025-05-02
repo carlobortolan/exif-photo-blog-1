@@ -22,7 +22,6 @@ import {
   PATH_ADMIN_UPLOADS,
   PATH_FEED_INFERRED,
   PATH_GRID_INFERRED,
-  PATH_ROOT,
   PATH_SIGN_IN,
   pathForCamera,
   pathForFilm,
@@ -50,7 +49,7 @@ import { getKeywordsForPhoto, titleForPhoto } from '@/photo';
 import PhotoDate from '@/photo/PhotoDate';
 import PhotoSmall from '@/photo/PhotoSmall';
 import { FaCheck } from 'react-icons/fa6';
-import { addHiddenToTags, formatTag } from '@/tag';
+import { addHiddenToTags, formatTag, isTagFavs, isTagHidden } from '@/tag';
 import { formatCount, formatCountDescriptive } from '@/utility/string';
 import CommandKItem from './CommandKItem';
 import { CATEGORY_VISIBILITY, GRID_HOMEPAGE_ENABLED } from '@/app/config';
@@ -73,6 +72,8 @@ import IconLock from '../components/icons/IconLock';
 import useVisualViewportHeight from '@/utility/useVisualViewport';
 import useMaskedScroll from '../components/useMaskedScroll';
 import { labelForFilm } from '@/film';
+import IconFavs from '@/components/icons/IconFavs';
+import IconHidden from '@/components/icons/IconHidden';
 
 const DIALOG_TITLE = 'Global Command-K Menu';
 const DIALOG_DESCRIPTION = 'For searching photos, views, and settings';
@@ -165,9 +166,10 @@ export default function CommandKClient({
   }, [mobileViewportHeight]);
 
   const refScroll = useRef<HTMLDivElement>(null);
-  const { maskImage, updateMask } = useMaskedScroll({
+  const { styleMask, updateMask } = useMaskedScroll({
     ref: refScroll,
     updateMaskOnEvents: false,
+    hideScrollbar: false,
   });
   
   // Manage action/path waiting state
@@ -310,7 +312,21 @@ export default function CommandKClient({
             className="translate-x-[1px] translate-y-[0.75px]"
           />,
           items: tagsIncludingHidden.map(({ tag, count }) => ({
-            label: formatTag(tag),
+            explicitKey: formatTag(tag),
+            label: <span className="flex items-center gap-[7px]">
+              {formatTag(tag)}
+              {isTagFavs(tag) &&
+                <IconFavs
+                  size={13}
+                  className="translate-y-[-0.5px]"
+                  highlight
+                />}
+              {isTagHidden(tag) &&
+                <IconHidden
+                  size={15}
+                  className="translate-y-[-0.5px]"
+                />}
+            </span>,
             annotation: formatCount(count),
             annotationAria: formatCountDescriptive(count),
             path: pathForTag(tag),
@@ -419,27 +435,24 @@ export default function CommandKClient({
     });
   }
 
-  const pagesItems: CommandKItem[] = [{
-    label: 'Home',
-    path: PATH_ROOT,
-  }];
+  const pageFeed: CommandKItem = {
+    label: GRID_HOMEPAGE_ENABLED ? 'Feed' : 'Feed (Home)',
+    path: PATH_FEED_INFERRED,
+  };
 
-  if (GRID_HOMEPAGE_ENABLED) {
-    pagesItems.push({
-      label: 'Feed',
-      path: PATH_FEED_INFERRED,
-    });
-  } else {
-    pagesItems.push({
-      label: 'Grid',
-      path: PATH_GRID_INFERRED,
-    });
-  }
+  const pageGrid: CommandKItem = {
+    label: GRID_HOMEPAGE_ENABLED ? 'Grid (Home)' : 'Grid',
+    path: PATH_GRID_INFERRED,
+  };
+
+  const pageItems: CommandKItem[] = GRID_HOMEPAGE_ENABLED
+    ? [pageGrid, pageFeed]
+    : [pageFeed, pageGrid];
 
   const sectionPages: CommandKSection = {
     heading: 'Pages',
     accessory: <HiDocumentText size={15} className="translate-x-[-1px]" />,
-    items: pagesItems,
+    items: pageItems,
   };
 
   const adminSection: CommandKSection = {
@@ -590,15 +603,11 @@ export default function CommandKClient({
         <Command.List
           ref={refScroll}
           onScroll={updateMask}
-          className={clsx(
-            'overflow-y-auto',
-            'mx-3 pt-2 pb-3.5',
-            '[&>*>*>*]:mt-2.5',
-          )}
-          style={{ maskImage, maxHeight }}
+          className="overflow-y-auto"
+          style={{ ...styleMask, maxHeight }}
         >
-          <div className="-mt-2.5">
-            <Command.Empty className="mt-1 pl-3 text-dim pb-1">
+          <div className="px-3 pt-2 pb-3.5">
+            <Command.Empty className="mt-1 pl-3 text-dim text-base pb-0.5">
               {isLoading ? 'Searching ...' : 'No results found'}
             </Command.Empty>
             {queriedSections
