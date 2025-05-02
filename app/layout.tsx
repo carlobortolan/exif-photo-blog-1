@@ -76,8 +76,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className={clsx(
-        // Center on large screens
-        '3xl:flex flex-col items-center',
+        '3xl:flex flex-col',
       )}>
         <AppStateProvider>
           <ThemeColors />
