@@ -11,14 +11,29 @@ import {
   absolutePathForPhotoImage,
 } from '@/app/paths';
 import PhotoDetailPage from '@/photo/PhotoDetailPage';
-import { getPhotosNearIdCached } from '@/photo/cache';
+import { getPhotoCached, getPhotosNearIdCached } from '@/photo/cache';
 import { cache } from 'react';
 import { staticallyGeneratePhotosIfConfigured } from '@/app/static';
 
 export const maxDuration = 60;
 
-const getPhotosNearIdCachedCached = cache((photoId: string) =>
-  getPhotosNearIdCached(photoId, { limit: RELATED_GRID_PHOTOS_TO_SHOW + 2 }));
+const getPhotosNearIdCachedCached = cache(async (photoId: string) => {
+  const photo = await getPhotoCached(photoId);
+  // Omit related photos when photo is excluded from feeds
+  return photo?.excludeFromFeeds
+    ? {
+      photo: photo,
+      photos: [],
+      photosGrid: [],
+      indexNumber: 0,
+    }
+    :getPhotosNearIdCached(
+      photoId, {
+        limit: RELATED_GRID_PHOTOS_TO_SHOW + 2,
+        excludeFromFeeds: true,
+      },
+    );
+});
 
 export const generateStaticParams = staticallyGeneratePhotosIfConfigured(
   'page',
@@ -38,12 +53,13 @@ export async function generateMetadata({
 
   const title = titleForPhoto(photo);
   const description = descriptionForPhoto(photo);
+  const descriptionHtml = descriptionForPhoto(photo, true);
   const images = absolutePathForPhotoImage(photo);
   const url = absolutePathForPhoto({ photo });
 
   return {
     title,
-    description,
+    description: descriptionHtml,
     openGraph: {
       title,
       images,

@@ -8,9 +8,10 @@ import { cache } from 'react';
 import { PATH_ROOT } from '@/app/paths';
 import { redirect } from 'next/navigation';
 import { staticallyGenerateCategoryIfConfigured } from '@/app/static';
+import { getAppText } from '@/i18n/state/server';
 
-const getPhotosFilmDataCachedCached =
-  cache(getPhotosFilmDataCached);
+const getPhotosFilmDataCachedCached = cache((film: string) =>
+  getPhotosFilmDataCached({ film, limit: INFINITE_SCROLL_GRID_INITIAL }));
 
 export const generateStaticParams = staticallyGenerateCategoryIfConfigured(
   'films',
@@ -31,19 +32,18 @@ export async function generateMetadata({
   const [
     photos,
     { count, dateRange },
-  ] = await getPhotosFilmDataCachedCached({
-    film,
-    limit: INFINITE_SCROLL_GRID_INITIAL,
-  });
-
+  ] = await getPhotosFilmDataCachedCached(film);
+  
   if (photos.length === 0) { return {}; }
-
+  
+  const appText = await getAppText();
+  
   const {
     url,
     title,
     description,
     images,
-  } = generateMetaForFilm(film, photos, count, dateRange);
+  } = generateMetaForFilm(film, photos, appText, count, dateRange);
 
   return {
     title,
@@ -70,10 +70,7 @@ export default async function FilmPage({
   const [
     photos,
     { count, dateRange },
-  ] =  await getPhotosFilmDataCachedCached({
-    film,
-    limit: INFINITE_SCROLL_GRID_INITIAL,
-  });
+  ] =  await getPhotosFilmDataCachedCached(film);
 
   if (photos.length === 0) { redirect(PATH_ROOT); } 
 

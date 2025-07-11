@@ -1,11 +1,12 @@
 import PhotoTag from '@/tag/PhotoTag';
 import { photoLabelForCount } from '@/photo';
 import { clsx } from 'clsx/lite';
-import FavsTag from '@/tag/FavsTag';
+import PhotoFavs from '@/tag/PhotoFavs';
 import { isTagFavs } from '@/tag';
 import Badge from '@/components/Badge';
+import { getAppText } from '@/i18n/state/server';
 
-export default function AdminTagBadge({
+export default async function AdminTagBadge({
   tag,
   count,
   hideBadge,
@@ -14,6 +15,8 @@ export default function AdminTagBadge({
   count: number,
   hideBadge?: boolean,
 }) {
+  const appText = await getAppText();
+
   const renderBadgeContent = () =>
     <div className={clsx(
       'inline-flex items-center gap-2',
@@ -22,13 +25,13 @@ export default function AdminTagBadge({
       isTagFavs(tag) && 'translate-y-[0.5px]',
     )}>
       {isTagFavs(tag)
-        ? <FavsTag />
+        ? <PhotoFavs />
         : <PhotoTag {...{ tag }} />}
       <div className="text-dim uppercase">
         <span>{count}</span>
         <span className="hidden xs:inline-block">
           &nbsp;
-          {photoLabelForCount(count)}
+          {photoLabelForCount(count, appText)}
         </span>
       </div>
     </div>;

@@ -18,6 +18,7 @@ https://photos.sambecker.com
 - Automatic OG image generation
 - CMD-K menu with photo search
 - AI-generated text descriptions
+- RSS/JSON feeds
 - Support for Fujifilm recipes and film simulations
 
 <img src="/readme/og-image-share.png" alt="OG Image Preview" width=600 />
@@ -88,6 +89,10 @@ _⚠️ READ BEFORE PROCEEDING_
      - `semantic` (default)
      - `none`
 
+#### Alternate AI providers (experimental)
+
+Set `OPENAI_BASE_URL` in order to use an alternate OpenAI-compatible provider
+
 ### Web Analytics
 
 1. Open project on Vercel
@@ -107,8 +112,8 @@ Application behavior can be changed by configuring the following environment var
 #### Content
 - `NEXT_PUBLIC_META_TITLE` (seen in search results and browser tab)
 - `NEXT_PUBLIC_META_DESCRIPTION` (seen in search results)
-- `NEXT_PUBLIC_NAV_TITLE` (defaults to domain when not configured)
-- `NEXT_PUBLIC_NAV_CAPTION` (seen in navigation, beneath title)
+- `NEXT_PUBLIC_NAV_TITLE` (seen in top-right navigation, defaults to domain when not configured)
+- `NEXT_PUBLIC_NAV_CAPTION` (seen in top-right navigation, beneath title)
 - `NEXT_PUBLIC_PAGE_ABOUT` (seen in grid sidebar—accepts rich formatting tags: `<b>`, `<strong>`, `<i>`, `<em>`, `<u>`, `<br>`)
 - `NEXT_PUBLIC_DOMAIN_SHARE` (seen in share modals where a shorter url may be desirable)
 
@@ -123,22 +128,34 @@ Application behavior can be changed by configuring the following environment var
 - `NEXT_PUBLIC_IMAGE_QUALITY = 1-100` controls the quality of large photos
 - `NEXT_PUBLIC_BLUR_DISABLED = 1` prevents image blur data being stored and displayed (potentially useful for limiting Postgres usage)
 
-#### Visual
-
-- `NEXT_PUBLIC_DEFAULT_THEME = light | dark` sets preferred initial theme (defaults to `system` when not configured)
-- `NEXT_PUBLIC_MATTE_PHOTOS = 1` constrains the size of each photo, and displays a surrounding border, potentially useful for photos with tall aspect ratios (colors can be customized via `NEXT_PUBLIC_MATTE_COLOR` + `NEXT_PUBLIC_MATTE_COLOR_DARK`)
-
-#### Display
+#### Categories
 - `NEXT_PUBLIC_CATEGORY_VISIBILITY`
   - Comma-separated value controlling which photo sets appear in grid sidebar and CMD-K menu, and in what order. For example, you could move cameras above tags, and hide film simulations, by updating to `cameras,tags,lenses,recipes`.
   - Accepted values:
+     - `recents`
+     - `years`
      - `tags` (default)
      - `cameras` (default)
      - `lenses` (default)
      - `recipes` (default)
      - `films` (default)
      - `focal-lengths`
+- `NEXT_PUBLIC_HIDE_CATEGORY_IMAGE_HOVERS = 1` prevents images displaying when hovering over category links:
 - `NEXT_PUBLIC_EXHAUSTIVE_SIDEBAR_CATEGORIES = 1` always shows expanded sidebar content
+- `NEXT_PUBLIC_HIDE_TAGS_WITH_ONE_PHOTO = 1` to only show tags with 2 or more photos
+
+#### Sorting
+- `NEXT_PUBLIC_DEFAULT_SORT`
+  - Sets default sort on grid/full homepages
+  - Accepted values:
+    - `taken-at` (default)
+    - `taken-at-oldest-first`
+    - `uploaded-at`
+    - `uploaded-at-oldest-first`
+- `NEXT_PUBLIC_PRIORITY_BASED_SORTING = 1` takes priority field into account when sorting photos (⚠️ enabling may have performance consequences)
+- `NEXT_PUBLIC_SHOW_SORT_CONTROL = 1` shows sort control in desktop nav on grid/full homepages
+
+#### Display
 - `NEXT_PUBLIC_HIDE_KEYBOARD_SHORTCUT_TOOLTIPS = 1` hides keyboard shortcut hints in areas like the main nav, and previous/next photo links
 - `NEXT_PUBLIC_HIDE_EXIF_DATA = 1` hides EXIF data in photo details and OG images (potentially useful for portfolios, which don't focus on photography)
 - `NEXT_PUBLIC_HIDE_ZOOM_CONTROLS = 1` hides fullscreen photo zoom controls
@@ -151,11 +168,14 @@ Application behavior can be changed by configuring the following environment var
 - `NEXT_PUBLIC_GRID_ASPECT_RATIO = 1.5` sets aspect ratio for grid tiles (defaults to `1`—setting to `0` removes the constraint)
 - `NEXT_PUBLIC_SHOW_LARGE_THUMBNAILS = 1` ensures large thumbnails on photo grid views (if not configured, density is based on aspect ratio)
 
+#### Design
+- `NEXT_PUBLIC_DEFAULT_THEME = light | dark` sets preferred initial theme (defaults to `system` when not configured)
+- `NEXT_PUBLIC_MATTE_PHOTOS = 1` constrains the size of each photo, and displays a surrounding border, potentially useful for photos with tall aspect ratios (colors can be customized via `NEXT_PUBLIC_MATTE_COLOR` + `NEXT_PUBLIC_MATTE_COLOR_DARK`)
+
 #### Settings
 - `NEXT_PUBLIC_GEO_PRIVACY = 1` disables collection/display of location-based data (⚠️ re-compresses uploaded images in order to remove GPS information)
 - `NEXT_PUBLIC_ALLOW_PUBLIC_DOWNLOADS = 1` enables public photo downloads for all visitors (⚠️ may result in increased bandwidth usage)
-- `NEXT_PUBLIC_PUBLIC_API = 1` enables public API available at `/api`
-- `NEXT_PUBLIC_IGNORE_PRIORITY_ORDER = 1` prevents `priority_order` field affecting photo order
+- `NEXT_PUBLIC_SITE_FEEDS = 1` enables feeds at `/feed.json` and `/rss.xml`
 - `NEXT_PUBLIC_OG_TEXT_ALIGNMENT = BOTTOM` keeps OG image text bottom aligned (default is top)
 
 ## Alternate storage providers
@@ -254,6 +274,23 @@ Vercel Postgres can be switched to another Postgres-compatible, pooling provider
 1. Ensure connection string is set to "Transaction Mode" via port `6543`
 2. Disable SSL by setting `DISABLE_POSTGRES_SSL = 1`
 
+💬 &nbsp;&nbsp;I18N
+-
+
+Partial internationalization (for non-admin, user-facing text) provided for a handful of languages. Configure locale by setting environment variable `NEXT_PUBLIC_LOCALE`.
+
+### Supported Languages
+- `en-us`
+- `pt-br`
+- `pt-pt`
+- `id-id`
+- `zh-cn`
+- `bd-bn`
+
+To add support for a new language, open a PR following instructions in [/src/i18n/index.ts](https://github.com/sambecker/exif-photo-blog/blob/main/src/i18n/index.ts), using [en-us.ts](https://github.com/sambecker/exif-photo-blog/blob/main/src/i18n/locales/en-us.ts) as reference.
+
+Thank you ❤️ translators: [@sconetto](https://github.com/sconetto) (`pt-br`, `pt-pt`), [@brandnholl](https://github.com/brandnholl) (`id-id`), [@TongEc](https://github.com/TongEc) (`zh-cn`), [@xahidex](https://github.com/xahidex) (`bd-bn`)
+
 📖&nbsp;&nbsp;FAQ
 -
 #### How do I receive template updates?
@@ -280,8 +317,8 @@ Vercel Postgres can be switched to another Postgres-compatible, pooling provider
 #### Why are my grid thumbnails so small?
 > Thumbnail grid density (seen on `/grid`, tag overviews, and other photo sets) is dependent on aspect ratio configuration (ratios of 1 or less have more photos per row). This can be overridden by setting `NEXT_PUBLIC_SHOW_LARGE_THUMBNAILS = 1`.
 
-#### How secure are photos marked “hidden?”
-> While all hidden paths (`/tag/hidden/*`) require authentication, raw links to individual photo assets remain publicly accessible. Randomly generated urls from storage providers are only secure via obscurity. Use with caution.
+#### How secure are photos marked “private?”
+> While all private paths (`/tag/private/*`) require authentication, raw links to individual photo assets remain publicly accessible. Randomly generated urls from storage providers are only secure via obscurity. Use with caution.
 
 #### My images/content have fallen out of sync with my database and/or my production site no longer matches local development. What do I do?
 > Navigate to `/admin/configuration` and click "Clear Cache."

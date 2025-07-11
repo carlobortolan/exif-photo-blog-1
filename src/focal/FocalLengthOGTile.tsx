@@ -1,50 +1,41 @@
+'use client';
+
 import { Photo, PhotoDateRange } from '@/photo';
 import {
-  absolutePathForFocalLengthImage,
   pathForFocalLength,
+  pathForFocalLengthImage,
 } from '@/app/paths';
-import OGTile from '@/components/OGTile';
+import OGTile, { OGTilePropsCore } from '@/components/og/OGTile';
 import { descriptionForFocalLengthPhotos, titleForFocalLength } from '.';
-
-export type OGLoadingState = 'unloaded' | 'loading' | 'loaded' | 'failed';
+import { useAppText } from '@/i18n/state/client';
 
 export default function FocalLengthOGTile({
   focal,
   photos,
-  loadingState: loadingStateExternal,
-  riseOnHover,
-  onLoad,
-  onFail,
-  retryTime,
   count,
   dateRange,
+  ...props
 }: {
   focal: number
   photos: Photo[]
-  loadingState?: OGLoadingState
-  onLoad?: () => void
-  onFail?: () => void
-  riseOnHover?: boolean
-  retryTime?: number
   count?: number
   dateRange?: PhotoDateRange
-}) {
+} & OGTilePropsCore) {
+  const appText = useAppText();
   return (
     <OGTile {...{
-      title: titleForFocalLength(focal, photos, count),
-      description: descriptionForFocalLengthPhotos(
-        photos,
-        true,
-        count,
-        dateRange,
-      ),
+      ...props,
+      title: titleForFocalLength(focal, photos, appText, count),
+      description:
+        descriptionForFocalLengthPhotos(
+          photos,
+          appText,
+          true,
+          count,
+          dateRange,
+        ),
       path: pathForFocalLength(focal),
-      pathImageAbsolute: absolutePathForFocalLengthImage(focal),
-      loadingState: loadingStateExternal,
-      onLoad,
-      onFail,
-      riseOnHover,
-      retryTime,
+      pathImage: pathForFocalLengthImage(focal),
     }}/>
   );
 };

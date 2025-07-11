@@ -11,8 +11,9 @@ import { PATH_ADMIN_PHOTOS, isPathAdmin, isPathSignIn } from './paths';
 import SubmitButtonWithStatus from '@/components/SubmitButtonWithStatus';
 import { signOutAction } from '@/auth/actions';
 import AnimateItems from '@/components/AnimateItems';
-import { useAppState } from '@/state/AppState';
+import { useAppState } from '@/app/AppState';
 import Spinner from '@/components/Spinner';
+import { useAppText } from '@/i18n/state/client';
 
 export default function Footer() {
   const pathname = usePathname();
@@ -23,6 +24,8 @@ export default function Footer() {
     isCheckingAuth,
     clearAuthStateAndRedirectIfNecessary,
   } = useAppState();
+
+  const appText = useAppText();
 
   const showFooter = !isPathSignIn(pathname);
 
@@ -51,7 +54,7 @@ export default function Footer() {
                     <form action={() => signOutAction()
                       .then(clearAuthStateAndRedirectIfNecessary)}>
                       <SubmitButtonWithStatus styleAs="link">
-                        Sign out
+                        {appText.auth.signOut}
                       </SubmitButtonWithStatus>
                     </form>
                   </>
@@ -60,7 +63,7 @@ export default function Footer() {
                     : SHOW_REPO_LINK
                       ? <RepoLink />
                       : <Link href={PATH_ADMIN_PHOTOS}>
-                        Admin
+                        {appText.nav.admin}
                       </Link>}
               </div>
               <div className="flex items-center h-10">

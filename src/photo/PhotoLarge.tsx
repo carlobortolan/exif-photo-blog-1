@@ -37,7 +37,7 @@ import { RevalidatePhoto } from './InfinitePhotoScroll';
 import { useCallback, useMemo, useRef } from 'react';
 import useVisible from '@/utility/useVisible';
 import PhotoDate from './PhotoDate';
-import { useAppState } from '@/state/AppState';
+import { useAppState } from '@/app/AppState';
 import { LuExpand } from 'react-icons/lu';
 import LoaderButton from '@/components/primitives/LoaderButton';
 import Tooltip from '@/components/Tooltip';
@@ -50,6 +50,7 @@ import PhotoLens from '@/lens/PhotoLens';
 import { lensFromPhoto } from '@/lens';
 import MaskedScroll from '@/components/MaskedScroll';
 import useCategoryCountsForPhoto from '@/category/useCategoryCountsForPhoto';
+import { useAppText } from '@/i18n/state/client';
 
 export default function PhotoLarge({
   photo,
@@ -58,6 +59,8 @@ export default function PhotoLarge({
   priority,
   prefetch = SHOULD_PREFETCH_ALL_LINKS,
   prefetchRelatedLinks = SHOULD_PREFETCH_ALL_LINKS,
+  recent,
+  year,
   revalidatePhoto,
   showTitle = true,
   showTitleAsH1,
@@ -68,6 +71,8 @@ export default function PhotoLarge({
   showZoomControls: _showZoomControls = true,
   shouldZoomOnFKeydown = true,
   shouldShare = true,
+  shouldShareRecents,
+  shouldShareYear,
   shouldShareCamera,
   shouldShareLens,
   shouldShareTag,
@@ -75,6 +80,7 @@ export default function PhotoLarge({
   shouldShareRecipe,
   shouldShareFocalLength,
   includeFavoriteInAdminMenu,
+  forceFallbackFade,
   onVisible,
   showAdminKeyCommands,
 }: {
@@ -84,6 +90,8 @@ export default function PhotoLarge({
   priority?: boolean
   prefetch?: boolean
   prefetchRelatedLinks?: boolean
+  recent?: boolean
+  year?: string
   revalidatePhoto?: RevalidatePhoto
   showTitle?: boolean
   showTitleAsH1?: boolean
@@ -94,6 +102,8 @@ export default function PhotoLarge({
   showZoomControls?: boolean
   shouldZoomOnFKeydown?: boolean
   shouldShare?: boolean
+  shouldShareRecents?: boolean
+  shouldShareYear?: boolean
   shouldShareCamera?: boolean
   shouldShareLens?: boolean
   shouldShareTag?: boolean
@@ -101,6 +111,7 @@ export default function PhotoLarge({
   shouldShareRecipe?: boolean
   shouldShareFocalLength?: boolean
   includeFavoriteInAdminMenu?: boolean
+  forceFallbackFade?: boolean
   onVisible?: () => void
   showAdminKeyCommands?: boolean
 }) {
@@ -115,6 +126,8 @@ export default function PhotoLarge({
     shouldDebugRecipeOverlays,
     isUserSignedIn,
   } = useAppState();
+
+  const appText = useAppText();
 
   const {
     cameraCount,
@@ -221,6 +234,7 @@ export default function PhotoLarge({
           blurDataURL={photo.blurData}
           blurCompatibilityMode={doesPhotoNeedBlurCompatibility(photo)}
           priority={priority}
+          forceFallbackFade={forceFallbackFade}
         />
       </ZoomControls>
       <div className={clsx(
@@ -378,7 +392,7 @@ export default function PhotoLarge({
                           <>
                             {' '}
                             <Tooltip
-                              content="35mm equivalent"
+                              content={appText.tooltip['35mm']}
                               sideOffset={3}
                               supportMobile
                             >
@@ -434,7 +448,7 @@ export default function PhotoLarge({
                   )}>
                     {showZoomControls &&
                       <LoaderButton
-                        tooltip="Zoom In"
+                        tooltip={appText.tooltip.zoom}
                         icon={<LuExpand size={15} />}
                         onClick={() => refZoomControls.current?.open()}
                         styleAs="link"
@@ -443,11 +457,23 @@ export default function PhotoLarge({
                       />}
                     {shouldShare &&
                       <ShareButton
-                        tooltip="Share Photo"
+                        tooltip={appText.tooltip.sharePhoto}
                         photo={photo}
-                        tag={shouldShareTag ? primaryTag : undefined}
-                        camera={shouldShareCamera ? camera : undefined}
-                        lens={shouldShareLens ? lens : undefined}
+                        recent={shouldShareRecents
+                          ? recent
+                          : undefined}
+                        year={shouldShareYear
+                          ? year
+                          : undefined}
+                        tag={shouldShareTag
+                          ? primaryTag
+                          : undefined}
+                        camera={shouldShareCamera
+                          ? camera
+                          : undefined}
+                        lens={shouldShareLens
+                          ? lens
+                          : undefined}
                         film={shouldShareFilm
                           ? photo.film
                           : undefined}

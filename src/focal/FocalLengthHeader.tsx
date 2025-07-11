@@ -3,7 +3,9 @@ import { descriptionForFocalLengthPhotos } from '.';
 import PhotoHeader from '@/photo/PhotoHeader';
 import PhotoFocalLength from './PhotoFocalLength';
 import { AI_TEXT_GENERATION_ENABLED } from '@/app/config';
-export default function FocalLengthHeader({
+import { getAppText } from '@/i18n/state/server';
+
+export default async function FocalLengthHeader({
   focal,
   photos,
   selectedPhoto,
@@ -18,14 +20,21 @@ export default function FocalLengthHeader({
   count?: number
   dateRange?: PhotoDateRange
 }) {
+  const appText = await getAppText();
   return (
     <PhotoHeader
       focal={focal}
-      entity={<PhotoFocalLength focal={focal} contrast="high" />}
+      entity={<PhotoFocalLength
+        focal={focal}
+        contrast="high"
+        showHover={false}
+      />}
       entityDescription={descriptionForFocalLengthPhotos(
         photos,
+        appText,
         undefined,
         count,
+        dateRange,
       )}
       photos={photos}
       selectedPhoto={selectedPhoto}

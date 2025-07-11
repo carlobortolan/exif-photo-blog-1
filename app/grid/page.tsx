@@ -1,7 +1,4 @@
-import {
-  INFINITE_SCROLL_GRID_INITIAL,
-  generateOgImageMetaForPhotos,
-} from '@/photo';
+import { generateOgImageMetaForPhotos } from '@/photo';
 import PhotosEmptyState from '@/photo/PhotosEmptyState';
 import { Metadata } from 'next/types';
 import { getPhotos } from '@/photo/db/query';
@@ -9,12 +6,15 @@ import { cache } from 'react';
 import PhotoGridPage from '@/photo/PhotoGridPage';
 import { getDataForCategoriesCached } from '@/category/cache';
 import { getPhotosMetaCached } from '@/photo/cache';
+import { USER_DEFAULT_SORT_OPTIONS } from '@/app/config';
+import { FEED_META_QUERY_OPTIONS, getFeedQueryOptions } from '@/feed';
 
 export const dynamic = 'force-static';
+export const maxDuration = 60;
 
-const getPhotosCached = cache(() => getPhotos({
-  limit: INFINITE_SCROLL_GRID_INITIAL,
-}));
+const getPhotosCached = cache(() => getPhotos(getFeedQueryOptions({
+  isGrid: true,
+})));
 
 export async function generateMetadata(): Promise<Metadata> {
   const photos = await getPhotosCached()
@@ -30,7 +30,7 @@ export default async function GridPage() {
   ] = await Promise.all([
     getPhotosCached()
       .catch(() => []),
-    getPhotosMetaCached()
+    getPhotosMetaCached(FEED_META_QUERY_OPTIONS)
       .then(({ count }) => count)
       .catch(() => 0),
     getDataForCategoriesCached(),
@@ -42,6 +42,7 @@ export default async function GridPage() {
         {...{
           photos,
           photosCount,
+          ...USER_DEFAULT_SORT_OPTIONS,
           ...categories,
         }}
       />

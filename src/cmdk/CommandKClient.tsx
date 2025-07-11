@@ -20,7 +20,7 @@ import {
   PATH_ADMIN_RECIPES,
   PATH_ADMIN_TAGS,
   PATH_ADMIN_UPLOADS,
-  PATH_FEED_INFERRED,
+  PATH_FULL_INFERRED,
   PATH_GRID_INFERRED,
   PATH_SIGN_IN,
   pathForCamera,
@@ -30,6 +30,8 @@ import {
   pathForPhoto,
   pathForRecipe,
   pathForTag,
+  pathForYear,
+  PREFIX_RECENTS,
 } from '../app/paths';
 import Modal from '../components/Modal';
 import { clsx } from 'clsx/lite';
@@ -39,20 +41,27 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { BiDesktop, BiLockAlt, BiMoon, BiSun } from 'react-icons/bi';
 import { IoInvertModeSharp } from 'react-icons/io5';
-import { useAppState } from '@/state/AppState';
+import { useAppState } from '@/app/AppState';
 import { searchPhotosAction } from '@/photo/actions';
 import { RiToolsFill } from 'react-icons/ri';
-import { BiSolidUser } from 'react-icons/bi';
-import { HiDocumentText } from 'react-icons/hi';
 import { signOutAction } from '@/auth/actions';
 import { getKeywordsForPhoto, titleForPhoto } from '@/photo';
 import PhotoDate from '@/photo/PhotoDate';
 import PhotoSmall from '@/photo/PhotoSmall';
-import { FaCheck } from 'react-icons/fa6';
-import { addHiddenToTags, formatTag, isTagFavs, isTagHidden } from '@/tag';
+import {
+  addPrivateToTags,
+  formatTag,
+  isTagFavs,
+  isTagPrivate,
+  limitTagsByCount,
+} from '@/tag';
 import { formatCount, formatCountDescriptive } from '@/utility/string';
 import CommandKItem from './CommandKItem';
-import { CATEGORY_VISIBILITY, GRID_HOMEPAGE_ENABLED } from '@/app/config';
+import {
+  CATEGORY_VISIBILITY,
+  GRID_HOMEPAGE_ENABLED,
+  HIDE_TAGS_WITH_ONE_PHOTO,
+} from '@/app/config';
 import { DialogDescription, DialogTitle } from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import InsightsIndicatorDot from '@/admin/insights/InsightsIndicatorDot';
@@ -69,17 +78,26 @@ import IconRecipe from '../components/icons/IconRecipe';
 import IconFocalLength from '../components/icons/IconFocalLength';
 import IconFilm from '../components/icons/IconFilm';
 import IconLock from '../components/icons/IconLock';
+import IconYear from '../components/icons/IconYear';
 import useVisualViewportHeight from '@/utility/useVisualViewport';
 import useMaskedScroll from '../components/useMaskedScroll';
 import { labelForFilm } from '@/film';
 import IconFavs from '@/components/icons/IconFavs';
-import IconHidden from '@/components/icons/IconHidden';
+import { useAppText } from '@/i18n/state/client';
+import LoaderButton from '@/components/primitives/LoaderButton';
+import IconRecents from '@/components/icons/IconRecents';
+import { CgFileDocument } from 'react-icons/cg';
+import { FaRegUserCircle } from 'react-icons/fa';
+import { formatDistanceToNow } from 'date-fns';
+import IconCheck from '@/components/icons/IconCheck';
 
 const DIALOG_TITLE = 'Global Command-K Menu';
 const DIALOG_DESCRIPTION = 'For searching photos, views, and settings';
 
 const LISTENER_KEYDOWN = 'keydown';
 const MINIMUM_QUERY_LENGTH = 2;
+
+const MAX_HEIGHT = '20rem';
 
 type CommandKItem = {
   label: ReactNode
@@ -105,20 +123,20 @@ const renderToggle = (
 ): CommandKItem => ({
   label: `Toggle ${label}`,
   action: () => onToggle?.(prev => !prev),
-  annotation: isEnabled ? <FaCheck size={12} /> : undefined,
+  annotation: isEnabled ? <IconCheck size={12} /> : undefined,
 });
 
 export default function CommandKClient({
+  recents,
+  years: _years,
   cameras,
   lenses,
-  tags,
+  tags: _tags,
   recipes,
   films,
   focalLengths,
-  showDebugTools,
   footer,
 }: {
-  showDebugTools?: boolean
   footer?: string
 } & PhotoSetCategories) {
   const pathname = usePathname();
@@ -129,7 +147,7 @@ export default function CommandKClient({
     isCommandKOpen: isOpen,
     startUpload,
     photosCountTotal,
-    photosCountHidden,
+    photosCountHidden = 0,
     uploadsCount,
     tagsCount,
     recipesCount,
@@ -139,6 +157,7 @@ export default function CommandKClient({
     isGridHighDensity,
     areZoomControlsShown,
     arePhotosMatted,
+    areAdminDebugToolsEnabled,
     shouldShowBaselineGrid,
     shouldDebugImageFallbacks,
     shouldDebugInsights,
@@ -153,16 +172,17 @@ export default function CommandKClient({
     setShouldDebugRecipeOverlays,
   } = useAppState();
 
+  const appText = useAppText();
+
   const isOpenRef = useRef(isOpen);
 
   const refInput = useRef<HTMLInputElement>(null);
   const mobileViewportHeight = useVisualViewportHeight();
-  const heightMaximum = '18rem';
   const maxHeight = useMemo(() => {
     const positionY = refInput.current?.getBoundingClientRect().y;
     return mobileViewportHeight && positionY
-      ? `min(${mobileViewportHeight - positionY - 32}px, ${heightMaximum})`
-      : heightMaximum;
+      ? `min(${mobileViewportHeight - positionY - 32}px, ${MAX_HEIGHT})`
+      : MAX_HEIGHT;
   }, [mobileViewportHeight]);
 
   const refScroll = useRef<HTMLDivElement>(null);
@@ -192,7 +212,6 @@ export default function CommandKClient({
   const [queryLiveRaw, setQueryLive] = useState('');
   const [queryDebouncedRaw] =
     useDebounce(queryLiveRaw, 500, { trailing: true });
-  const isPlaceholderVisible = queryLiveRaw === '';
 
   // Parameterized query values
   const queryLive = useMemo(() =>
@@ -257,7 +276,7 @@ export default function CommandKClient({
           setIsLoading(false);
         });
     }
-  }, [queryDebounced, isPending]);
+  }, [queryDebounced, isPending, appText]);
 
   useEffect(() => {
     if (queryLive === '') {
@@ -276,16 +295,55 @@ export default function CommandKClient({
     }
   }, [isOpen]);
 
-  const tagsIncludingHidden = useMemo(() =>
-    addHiddenToTags(tags, photosCountHidden)
-  , [tags, photosCountHidden]);
+  const recent = recents[0];
+  const recentsStatus = useMemo(() => {
+    if (!recent) { return undefined; }
+    const { count, lastModified } = recent;
+    const subhead = appText.category.recentSubhead(
+      formatDistanceToNow(lastModified),
+    );
+    return count ? { count, subhead } : undefined;
+  }, [recent, appText]);
+
+  const years = useMemo(() =>
+    _years.filter(({ year }) => queryLive && year.includes(queryLive))
+  , [_years, queryLive]);
+
+  const tags = useMemo(() => {
+    const tagsIncludingPrivate = photosCountHidden > 0
+      ? addPrivateToTags(_tags, photosCountHidden)
+      : _tags;
+    return HIDE_TAGS_WITH_ONE_PHOTO
+      ? limitTagsByCount(tagsIncludingPrivate, 2, queryLive)
+      : tagsIncludingPrivate;
+  }, [_tags, photosCountHidden, queryLive]);
 
   const categorySections: CommandKSection[] = useMemo(() =>
     CATEGORY_VISIBILITY
       .map(category => {
         switch (category) {
+        case 'recents': return {
+          heading: appText.category.recentPlural,
+          accessory: <IconRecents size={15} />,
+          items: recentsStatus ? [{
+            label: recentsStatus.subhead,
+            annotation: formatCount(recentsStatus.count),
+            annotationAria: formatCountDescriptive(recentsStatus.count),
+            path: PREFIX_RECENTS,
+          }] : [],
+        };
+        case 'years': return {
+          heading: appText.category.yearPlural,
+          accessory: <IconYear size={14} />,
+          items: years.map(({ year, count }) => ({
+            label: year,
+            annotation: formatCount(count),
+            annotationAria: formatCountDescriptive(count),
+            path: pathForYear(year),
+          })),
+        };
         case 'cameras': return {
-          heading: 'Cameras',
+          heading: appText.category.cameraPlural,
           accessory: <IconCamera size={14} />,
           items: cameras.map(({ camera, count }) => ({
             label: formatCameraText(camera),
@@ -295,7 +353,7 @@ export default function CommandKClient({
           })),
         };
         case 'lenses': return {
-          heading: 'Lenses',
+          heading: appText.category.lensPlural,
           accessory: <IconLens size={14} className="translate-y-[0.5px]" />,
           items: lenses.map(({ lens, count }) => ({
             label: formatLensText(lens, 'medium'),
@@ -306,12 +364,12 @@ export default function CommandKClient({
           })),
         };
         case 'tags': return {
-          heading: 'Tags',
+          heading: appText.category.tagPlural,
           accessory: <IconTag
             size={13}
             className="translate-x-[1px] translate-y-[0.75px]"
           />,
-          items: tagsIncludingHidden.map(({ tag, count }) => ({
+          items: tags.map(({ tag, count }) => ({
             explicitKey: formatTag(tag),
             label: <span className="flex items-center gap-[7px]">
               {formatTag(tag)}
@@ -321,10 +379,10 @@ export default function CommandKClient({
                   className="translate-y-[-0.5px]"
                   highlight
                 />}
-              {isTagHidden(tag) &&
-                <IconHidden
-                  size={15}
-                  className="translate-y-[-0.5px]"
+              {isTagPrivate(tag) &&
+                <IconLock
+                  size={12}
+                  className="text-dim translate-y-[-0.5px]"
                 />}
             </span>,
             annotation: formatCount(count),
@@ -333,7 +391,7 @@ export default function CommandKClient({
           })),
         };
         case 'recipes': return {
-          heading: 'Recipes',
+          heading: appText.category.recipePlural,
           accessory: <IconRecipe
             size={15}
             className="translate-x-[-1px]"
@@ -346,7 +404,7 @@ export default function CommandKClient({
           })),
         };
         case 'films': return {
-          heading: 'Films',
+          heading: appText.category.filmPlural,
           accessory: <IconFilm size={14} />,
           items: films.map(({ film, count }) => ({
             label: labelForFilm(film).medium,
@@ -356,10 +414,10 @@ export default function CommandKClient({
           })),
         };
         case 'focal-lengths': return {
-          heading: 'Focal Lengths',
+          heading: appText.category.focalLengthPlural,
           accessory: <IconFocalLength className="text-[14px]" />,
           items: focalLengths.map(({ focal, count }) => ({
-            label: formatFocalLength(focal)!,
+            label: formatFocalLength(focal),
             annotation: formatCount(count),
             annotationAria: formatCountDescriptive(count),
             path: pathForFocalLength(focal),
@@ -368,30 +426,40 @@ export default function CommandKClient({
         }
       })
       .filter(Boolean) as CommandKSection[]
-  , [tagsIncludingHidden, cameras, lenses, recipes, films, focalLengths]);
+  , [
+    appText,
+    recentsStatus,
+    years,
+    cameras,
+    lenses,
+    tags,
+    recipes,
+    films,
+    focalLengths,
+  ]);
 
   const clientSections: CommandKSection[] = [{
-    heading: 'Theme',
+    heading: appText.theme.theme,
     accessory: <IoInvertModeSharp
       size={14}
       className="translate-y-[0.5px] translate-x-[-1px]"
     />,
     items: [{
-      label: 'Use System',
+      label: appText.theme.system,
       annotation: <BiDesktop />,
       action: () => setTheme('system'),
     }, {
-      label: 'Light Mode',
+      label: appText.theme.light,
       annotation: <BiSun size={16} className="translate-x-[1.25px]" />,
       action: () => setTheme('light'),
     }, {
-      label: 'Dark Mode',
+      label: appText.theme.dark,
       annotation: <BiMoon className="translate-x-[1px]" />,
       action: () => setTheme('dark'),
     }],
   }];
 
-  if (isUserSignedIn && showDebugTools) {
+  if (isUserSignedIn && areAdminDebugToolsEnabled) {
     clientSections.push({
       heading: 'Debug Tools',
       accessory: <RiToolsFill size={16} className="translate-x-[-1px]" />,
@@ -435,68 +503,75 @@ export default function CommandKClient({
     });
   }
 
-  const pageFeed: CommandKItem = {
-    label: GRID_HOMEPAGE_ENABLED ? 'Feed' : 'Feed (Home)',
-    path: PATH_FEED_INFERRED,
+  const pageFull: CommandKItem = {
+    label: GRID_HOMEPAGE_ENABLED
+      ? appText.nav.full
+      : `${appText.nav.full} (${appText.nav.home})`,
+    path: PATH_FULL_INFERRED,
   };
 
   const pageGrid: CommandKItem = {
-    label: GRID_HOMEPAGE_ENABLED ? 'Grid (Home)' : 'Grid',
+    label: GRID_HOMEPAGE_ENABLED
+      ? `${appText.nav.grid} (${appText.nav.home})`
+      : appText.nav.grid,
     path: PATH_GRID_INFERRED,
   };
 
   const pageItems: CommandKItem[] = GRID_HOMEPAGE_ENABLED
-    ? [pageGrid, pageFeed]
-    : [pageFeed, pageGrid];
+    ? [pageGrid, pageFull]
+    : [pageFull, pageGrid];
 
   const sectionPages: CommandKSection = {
     heading: 'Pages',
-    accessory: <HiDocumentText size={15} className="translate-x-[-1px]" />,
+    accessory: <CgFileDocument size={14} className="translate-x-[-0.5px]" />,
     items: pageItems,
   };
 
   const adminSection: CommandKSection = {
     heading: 'Admin',
-    accessory: <BiSolidUser size={15} className="translate-x-[-1px]" />,
+    accessory: <FaRegUserCircle
+      size={13}
+      className="translate-x-[-0.5px] translate-y-[0.5px]"
+    />,
     items: [],
   };
 
   if (isUserSignedIn) {
     adminSection.items.push({
-      label: 'Upload Photos',
+      label: appText.admin.uploadPhotos,
       annotation: <IconLock narrow />,
       action: startUpload,
     });
     if (uploadsCount) {
       adminSection.items.push({
-        label: `Uploads (${uploadsCount})`,
+        label: `${appText.admin.uploadPlural} (${uploadsCount})`,
         annotation: <IconLock narrow />,
         path: PATH_ADMIN_UPLOADS,
       });
     }
     adminSection.items.push({
-      label: `Manage Photos (${photosCountTotal})`,
+      label: `${appText.admin.managePhotos} (${photosCountTotal})`,
       annotation: <IconLock narrow />,
       path: PATH_ADMIN_PHOTOS,
     });
     if (tagsCount) {
       adminSection.items.push({
-        label: `Manage Tags (${tagsCount})`,
+        label: `${appText.admin.manageTags} (${tagsCount})`,
         annotation: <IconLock narrow />,
         path: PATH_ADMIN_TAGS,
       });
     }
     if (recipesCount) {
       adminSection.items.push({
-        label: `Manage Recipes (${recipesCount})`,
+        label: `${appText.admin.manageRecipes} (${recipesCount})`,
         annotation: <IconLock narrow />,
         path: PATH_ADMIN_RECIPES,
       });
     }
     adminSection.items.push({
       label: selectedPhotoIds === undefined
-        ? 'Batch Edit Photos ...'
-        : 'Exit Batch Edit',
+        ? appText.admin.batchEdit
+        : appText.admin.batchExitEdit,
       annotation: <IconLock narrow />,
       path: selectedPhotoIds === undefined
         ? PATH_GRID_INFERRED
@@ -506,7 +581,7 @@ export default function CommandKClient({
         : () => setSelectedPhotoIds?.(undefined),
     }, {
       label: <span className="flex items-center gap-3">
-        App Insights
+        {appText.admin.appInsights}
         {insightsIndicatorStatus &&
           <InsightsIndicatorDot />}
       </span>,
@@ -514,11 +589,11 @@ export default function CommandKClient({
       annotation: <IconLock narrow />,
       path: PATH_ADMIN_INSIGHTS,
     }, {
-      label: 'App Config',
+      label: appText.admin.appConfig,
       annotation: <IconLock narrow />,
       path: PATH_ADMIN_CONFIGURATION,
     });
-    if (showDebugTools) {
+    if (areAdminDebugToolsEnabled) {
       adminSection.items.push({
         label: 'Baseline Overview',
         annotation: <BiLockAlt />,
@@ -530,14 +605,14 @@ export default function CommandKClient({
       });
     }
     adminSection.items.push({
-      label: 'Sign Out',
+      label: appText.auth.signOut,
       action: () => signOutAction()
         .then(clearAuthStateAndRedirectIfNecessary)
         .then(() => setIsOpen?.(false)),
     });
   } else {
     adminSection.items.push({
-      label: 'Sign In',
+      label: appText.auth.signIn,
       path: PATH_SIGN_IN,
     });
   }
@@ -557,7 +632,7 @@ export default function CommandKClient({
     >
       <Modal
         anchor='top'
-        className="rounded-lg!"
+        className="rounded-[12px]!"
         onClose={() => setIsOpen?.(false)}
         noPadding
         fast
@@ -567,38 +642,47 @@ export default function CommandKClient({
           <DialogDescription>{DIALOG_DESCRIPTION}</DialogDescription>
         </VisuallyHidden.Root>
         <div className={clsx(
-          'px-3 md:px-4',
-          'pt-3 md:pt-4',
+          'flex items-center justify-center gap-2',
+          'py-1 px-4.5',
+          'rounded-none bg-transparent',
+          'border-b border-b-gray-400/25 dark:border-b-gray-800',
         )}>
-          <div className="relative">
-            <Command.Input
-              ref={refInput}
-              onChangeCapture={(e) => {
-                setQueryLive(e.currentTarget.value);
-                updateMask();
-              }}
-              className={clsx(
-                'w-full min-w-0!',
-                'focus:ring-0',
-                isPlaceholderVisible || isLoading && 'pr-10!',
-                'border-gray-200! dark:border-gray-800!',
-                'focus:border-gray-200 dark:focus:border-gray-800',
-                'placeholder:text-gray-400/80',
-                'dark:placeholder:text-gray-700',
-                'focus:outline-hidden',
-                isPending && 'opacity-20',
-              )}
-              placeholder="Search photos, views, settings ..."
-              disabled={isPending}
-            />
-            {isLoading && !isPending &&
-              <span className={clsx(
-                'absolute top-[9px] right-0 w-10',
-                'flex items-center justify-center translate-y-[2px]',
-              )}>
-                <Spinner size={16} />
-              </span>}
-          </div>
+          <Command.Input
+            ref={refInput}
+            onChangeCapture={(e) => {
+              setQueryLive(e.currentTarget.value);
+              updateMask();
+            }}
+            className={clsx(
+              'grow p-0',
+              'focus:ring-0',
+              'border-transparent focus:border-transparent',
+              'bg-transparent rounded-none',
+              'placeholder:text-gray-400/80',
+              'dark:placeholder:text-gray-700',
+              'focus:outline-hidden',
+              isPending && 'opacity-20',
+            )}
+            placeholder={appText.cmdk.placeholder}
+            disabled={isPending}
+          />
+          {isLoading && !isPending
+            ? <span className="mr-1 translate-y-[2px]">
+              <Spinner size={16} />
+            </span>
+            : <span className="max-sm:hidden">
+              <LoaderButton
+                className={clsx(
+                  'h-auto! px-1.5 py-1 -mr-1.5',
+                  'border-medium shadow-none',
+                  'text-[12px]',
+                  'text-gray-400/90 dark:text-gray-700',
+                )}
+                onClick={() => setIsOpen?.(false)}
+              >
+                ESC
+              </LoaderButton>
+            </span>}
         </div>
         <Command.List
           ref={refScroll}
@@ -606,9 +690,11 @@ export default function CommandKClient({
           className="overflow-y-auto"
           style={{ ...styleMask, maxHeight }}
         >
-          <div className="px-3 pt-2 pb-3.5">
-            <Command.Empty className="mt-1 pl-3 text-dim text-base pb-0.5">
-              {isLoading ? 'Searching ...' : 'No results found'}
+          <div className="flex flex-col pt-2 pb-3 px-3 gap-2">
+            <Command.Empty className="mt-1 px-2 text-dim text-[0.9rem] pb-0.5">
+              {isLoading
+                ? appText.cmdk.searching
+                : appText.cmdk.noResults}
             </Command.Empty>
             {queriedSections
               .concat(categorySections)
@@ -621,7 +707,7 @@ export default function CommandKClient({
                   key={heading}
                   heading={<div className={clsx(
                     'flex items-center',
-                    'px-2 py-1! pb-0.5',
+                    'px-2 py-1',
                     'text-xs font-medium text-dim tracking-wider',
                     isPending && 'opacity-20',
                   )}>
@@ -669,9 +755,7 @@ export default function CommandKClient({
                           if (path !== pathname) {
                             setKeyWaiting(key);
                             shouldCloseAfterWaiting.current = true;
-                            startTransition(() => {
-                              router.push(path, { scroll: true });
-                            });
+                            startTransition(() => router.push(path));
                           } else {
                             setIsOpen?.(false);
                           }

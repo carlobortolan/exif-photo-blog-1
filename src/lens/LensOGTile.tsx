@@ -1,43 +1,36 @@
 import { Photo, PhotoDateRange } from '@/photo';
-import { absolutePathForLensImage, pathForLens } from '@/app/paths';
-import OGTile from '@/components/OGTile';
+import { pathForLens, pathForLensImage } from '@/app/paths';
+import OGTile, { OGTilePropsCore } from '@/components/og/OGTile';
 import { Lens } from '.';
 import { titleForLens, descriptionForLensPhotos } from './meta';
-
-export type OGLoadingState = 'unloaded' | 'loading' | 'loaded' | 'failed';
+import { useAppText } from '@/i18n/state/client';
 
 export default function LensOGTile({
   lens,
   photos,
-  loadingState: loadingStateExternal,
-  riseOnHover,
-  onLoad,
-  onFail,
-  retryTime,
   count,
   dateRange,
+  ...props
 }: {
   lens: Lens
   photos: Photo[]
-  loadingState?: OGLoadingState
-  onLoad?: () => void
-  onFail?: () => void
-  riseOnHover?: boolean
-  retryTime?: number
   count?: number
   dateRange?: PhotoDateRange
-}) {
+} & OGTilePropsCore) {
+  const appText = useAppText();
   return (
     <OGTile {...{
-      title: titleForLens(lens, photos, count),
-      description: descriptionForLensPhotos(photos, true, count, dateRange),
+      ...props,
+      title: titleForLens(lens, photos, appText, count),
+      description: descriptionForLensPhotos(
+        photos,
+        appText,
+        true,
+        count,
+        dateRange,
+      ),
       path: pathForLens(lens),
-      pathImageAbsolute: absolutePathForLensImage(lens),
-      loadingState: loadingStateExternal,
-      onLoad,
-      onFail,
-      riseOnHover,
-      retryTime,
+      pathImage: pathForLensImage(lens),
     }}/>
   );
 };

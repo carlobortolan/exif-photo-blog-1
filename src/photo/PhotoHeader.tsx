@@ -15,14 +15,15 @@ import DivDebugBaselineGrid from '@/components/DivDebugBaselineGrid';
 import PhotoPrevNextActions from './PhotoPrevNextActions';
 import PhotoLink from './PhotoLink';
 import ResponsiveText from '@/components/primitives/ResponsiveText';
-import { useAppState } from '@/state/AppState';
+import { useAppState } from '@/app/AppState';
 import { GRID_GAP_CLASSNAME } from '@/components';
+import { useAppText } from '@/i18n/state/client';
 
 export default function PhotoHeader({
   photos,
   selectedPhoto,
   entity,
-  entityVerb = 'PHOTO',
+  entityVerb: _entityVerb,
   entityDescription,
   indexNumber,
   count,
@@ -44,15 +45,18 @@ export default function PhotoHeader({
 } & PhotoSetCategory) {
   const { isGridHighDensity } = useAppState();
 
+  const appText = useAppText();
+
+  const entityVerb = _entityVerb ?? appText.photo.photo.toLocaleUpperCase();
+
   const { start, end } = dateRangeForPhotos(photos, dateRange);
 
   const selectedPhotoIndex = selectedPhoto
     ? photos.findIndex(photo => photo.id === selectedPhoto.id)
     : undefined;
 
-  const paginationLabel =
-    (indexNumber || (selectedPhotoIndex ?? 0 + 1)) + ' of ' +
-    (count ?? photos.length);
+  const paginationIndex = indexNumber || (selectedPhotoIndex ?? 0 + 1);
+  const paginationCount = count ?? photos.length;
 
   const headerType = selectedPhotoIndex === undefined
     ? 'photo-set'
@@ -154,8 +158,16 @@ export default function PhotoHeader({
                     dim: true,
                   }} />}
               </>
-              : <ResponsiveText shortText={paginationLabel}>
-                {entityVerb} {paginationLabel}
+              : <ResponsiveText
+                shortText={appText.utility.paginate(
+                  paginationIndex,
+                  paginationCount,
+                )}
+              >
+                {appText.utility.paginateAction(
+                  paginationIndex,
+                  paginationCount,
+                  entityVerb)}
               </ResponsiveText>}
           </>}
         </div>
@@ -165,6 +177,8 @@ export default function PhotoHeader({
             ? 'hidden sm:flex'
             : 'flex',
           'justify-end',
+          // Make full height for prev/next symbols
+          'max-sm:h-full',
         )}>
           {selectedPhoto
             ? renderPrevNext

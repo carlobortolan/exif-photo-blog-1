@@ -8,7 +8,7 @@ import AppViewSwitcher, { SwitcherSelection } from '@/app/AppViewSwitcher';
 import {
   PATH_ROOT,
   isPathAdmin,
-  isPathFeed,
+  isPathFull,
   isPathGrid,
   isPathProtected,
   isPathSignIn,
@@ -20,15 +20,18 @@ import {
 } from './config';
 import { useRef } from 'react';
 import useStickyNav from './useStickyNav';
+import { useAppState } from '@/app/AppState';
 
 const NAV_HEIGHT_CLASS = NAV_CAPTION
   ? 'min-h-[4rem] sm:min-h-[5rem]'
   : 'min-h-[4rem]';
 
 export default function Nav({
-  navTitleOrDomain,
+  navTitle,
+  navCaption,
 }: {
-  navTitleOrDomain: string;
+  navTitle: string
+  navCaption?: string
 }) {
   const ref = useRef<HTMLElement>(null);
 
@@ -36,8 +39,13 @@ export default function Nav({
   const showNav = !isPathSignIn(pathname);
 
   const {
+    hasLoadedWithAnimations,
+  } = useAppState();
+
+  const {
     classNameStickyContainer,
     classNameStickyNav,
+    isNavVisible,
   } = useStickyNav(ref);
 
   const renderLink = (
@@ -46,15 +54,15 @@ export default function Nav({
   ) =>
     typeof linkOrAction === 'string'
       ? <Link href={linkOrAction}>{text}</Link>
-      : <button onClick={linkOrAction}>{text}</button>;
+      : <button onClick={linkOrAction} type="button">{text}</button>;
 
   const switcherSelectionForPath = (): SwitcherSelection | undefined => {
     if (pathname === PATH_ROOT) {
-      return GRID_HOMEPAGE_ENABLED ? 'grid' : 'feed';
+      return GRID_HOMEPAGE_ENABLED ? 'grid' : 'full';
     } else if (isPathGrid(pathname)) {
       return 'grid';
-    } else if (isPathFeed(pathname)) {
-      return 'feed';
+    } else if (isPathFull(pathname)) {
+      return 'full';
     } else if (isPathProtected(pathname)) {
       return 'admin';
     }
@@ -82,21 +90,22 @@ export default function Nav({
               )}>
               <AppViewSwitcher
                 currentSelection={switcherSelectionForPath()}
+                className="translate-x-[-1px]"
+                animate={hasLoadedWithAnimations && isNavVisible}
               />
               <div className={clsx(
                 'grow text-right min-w-0',
-                'hidden xs:block',
                 'translate-y-[-1px]',
               )}>
                 <div className="truncate overflow-hidden select-none">
-                  {renderLink(navTitleOrDomain, PATH_ROOT)}
+                  {renderLink(navTitle, PATH_ROOT)}
                 </div>
-                {NAV_CAPTION &&
+                {navCaption &&
                   <div className={clsx(
                     'hidden sm:block truncate overflow-hidden',
                     'leading-tight text-dim',
                   )}>
-                    {NAV_CAPTION}
+                    {navCaption}
                   </div>}
               </div>
             </nav>]

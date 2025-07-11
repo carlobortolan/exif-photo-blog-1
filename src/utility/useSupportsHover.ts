@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 
 export default function useSupportsHover() {
-  const [supportsHover, setSupportsHover] = useState(true);
+  const [supportsHover, setSupportsHover] = useState<boolean>();
 
   useEffect(() => {
     const mql = window.matchMedia('(hover: hover)');
-    setSupportsHover(mql.matches);
 
+    setSupportsHover(mql.matches);
     const listener = (e: MediaQueryListEvent) => {
       setSupportsHover(e.matches);
     };

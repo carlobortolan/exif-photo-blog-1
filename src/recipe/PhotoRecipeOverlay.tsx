@@ -17,8 +17,8 @@ import {
 } from '.';
 import { TbChecklist } from 'react-icons/tb';
 import CopyButton from '@/components/CopyButton';
-import { labelForFilm } from '@/film';
 import PhotoRecipe from './PhotoRecipe';
+import { useAppText } from '@/i18n/state/client';
 
 export default function PhotoRecipeOverlay({
   ref,
@@ -45,6 +45,8 @@ export default function PhotoRecipeOverlay({
     bwAdjustment,
     bwMagentaGreen,
   } = data;
+
+  const appText = useAppText();
 
   const whiteBalanceTypeFormatted = formatWhiteBalance(data);
 
@@ -98,30 +100,32 @@ export default function PhotoRecipeOverlay({
         'z-10',
         'w-[20rem] p-3 space-y-3',
         'scroll-mt-8',
-        'rounded-lg',
+        'rounded-[10px]',
         isOnPhoto
           ? 'shadow-2xl'
           // Soften shadow to mimic <Modal />
           : 'shadow-2xl/20 dark:shadow-2xl/100',
         'text-[13.5px] text-black',
-        'bg-white/70 border border-neutral-200/30',
+        'bg-white/70 outline outline-neutral-400/15',
         'backdrop-blur-xl saturate-[300%]',
       )}
     >
       <div className={clsx(
         'flex items-center gap-2 h-6',
         'pl-1.5 pr-0.5',
+        'translate-y-[0.5px]',
       )}>
         <div className={clsx(
-          'grow translate-y-[-0.5px]',
+          'grow translate-y-[0.5px]',
           title && 'hover:opacity-50 active:opacity-75',
         )}>
           {title
             ? <PhotoRecipe
               recipe={title}
+              contrast="frosted"
               className={clsx(
                 'text-[15px]',
-                '[&>*>*>*]:text-black',
+                '[&>*>*>*>*]:text-black',
                 'tracking-wide',
               )}
             />
@@ -134,11 +138,11 @@ export default function PhotoRecipeOverlay({
           text={generateRecipeText({ title, data, film })}
           iconSize={17}
           className={clsx(
-            'translate-y-[1.5px]',
+            'translate-y-[-1.5px]',
             'text-black/40 active:text-black/75',
             'hover:text-black/40',
           )}
-          tooltip="Copy recipe text"
+          tooltip={appText.tooltip.recipeCopy}
           tooltipColor="frosted"
         />
         <span>
@@ -157,12 +161,15 @@ export default function PhotoRecipeOverlay({
         <div className="col-span-8">
           {renderDataSquare(
             <div className="flex items-center gap-1.5">
-              {labelForFilm(film).medium.toLocaleUpperCase()}
               <PhotoFilm
-                contrast="frosted"
                 film={film}
-                type="icon-only"
-                className="opacity-80 translate-y-[-0.5px]"
+                contrast="frosted"
+                className={clsx(
+                  'translate-y-[-0.5px]',
+                  '*:text-black! *:active:text-black!',
+                  'opacity-80 hover:opacity-60 active:opacity-80',
+                )}
+                badged={false}
               />
             </div>,
             undefined,

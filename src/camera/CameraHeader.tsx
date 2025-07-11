@@ -4,8 +4,9 @@ import { Camera, cameraFromPhoto } from '.';
 import PhotoCamera from './PhotoCamera';
 import { descriptionForCameraPhotos } from './meta';
 import { AI_TEXT_GENERATION_ENABLED } from '@/app/config';
+import { getAppText } from '@/i18n/state/server';
 
-export default function CameraHeader({
+export default async function CameraHeader({
   camera: cameraProp,
   photos,
   selectedPhoto,
@@ -20,13 +21,25 @@ export default function CameraHeader({
   count?: number
   dateRange?: PhotoDateRange
 }) {
+  const appText = await getAppText();
   const camera = cameraFromPhoto(photos[0], cameraProp);
+
   return (
     <PhotoHeader
       camera={camera}
-      entity={<PhotoCamera {...{ camera }} contrast="high" />}
+      entity={<PhotoCamera
+        {...{ camera }}
+        contrast="high"
+        showHover={false}
+      />}
       entityDescription={
-        descriptionForCameraPhotos(photos, undefined, count, dateRange)}
+        descriptionForCameraPhotos(
+          photos,
+          appText,
+          undefined,
+          count,
+          dateRange,
+        )}
       photos={photos}
       selectedPhoto={selectedPhoto}
       indexNumber={indexNumber}

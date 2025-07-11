@@ -10,7 +10,7 @@ import {
 import { PhotoSetCategory } from '../category';
 import PhotoLink from './PhotoLink';
 import { pathForAdminPhotoEdit, pathForPhoto } from '@/app/paths';
-import { useAppState } from '@/state/AppState';
+import { useAppState } from '@/app/AppState';
 import { AnimationConfig } from '@/components/AnimateItems';
 import { clsx } from 'clsx/lite';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
@@ -20,6 +20,7 @@ import {
   deletePhotoAction,
   syncPhotoAction,
   toggleFavoritePhotoAction,
+  togglePrivatePhotoAction,
 } from './actions';
 import { isPhotoFav } from '@/tag';
 import Tooltip from '@/components/Tooltip';
@@ -31,6 +32,7 @@ import { downloadFileFromBrowser } from '@/utility/url';
 import useKeydownHandler from '@/utility/useKeydownHandler';
 import { KEY_COMMANDS } from './key-commands';
 import { syncPhotoConfirmText } from '@/admin/confirm';
+import { useAppText } from '@/i18n/state/client';
 
 const ANIMATION_LEFT: AnimationConfig = { type: 'left', duration: 0.3 };
 const ANIMATION_RIGHT: AnimationConfig = { type: 'right', duration: 0.3 };
@@ -49,10 +51,12 @@ export default function PhotoPrevNextActions({
 } & PhotoSetCategory) {
   const { setNextPhotoAnimation, isUserSignedIn } = useAppState();
 
+  const appText = useAppText();
+
   const photoTitle = photo
     ? photo.title
       ? `'${photo.title}'`
-      : 'photo'
+      : appText.photo.photo.toLocaleLowerCase()
     : undefined;
   const downloadUrl = photo?.url;
   const downloadFileName = photo
@@ -61,6 +65,10 @@ export default function PhotoPrevNextActions({
 
   const toggleFavorite = useCallback(() => {
     if (photo?.id) { return toggleFavoritePhotoAction(photo.id); }
+  }, [photo?.id]);
+
+  const toggleHidden = useCallback(() => {
+    if (photo?.id) { return togglePrivatePhotoAction(photo.id); }
   }, [photo?.id]);
 
   const navigateToPhotoEdit = useNavigateOrRunActionWithToast({
@@ -76,6 +84,16 @@ export default function PhotoPrevNextActions({
   const unfavoritePhoto = useNavigateOrRunActionWithToast({
     pathOrAction: toggleFavorite,
     toastMessage: `Unfavoriting ${photoTitle} ...`,
+  });
+
+  const hidePhoto = useNavigateOrRunActionWithToast({
+    pathOrAction: toggleHidden,
+    toastMessage: `Hiding ${photoTitle} ...`,
+  });
+
+  const unhidePhoto = useNavigateOrRunActionWithToast({
+    pathOrAction: toggleHidden,
+    toastMessage: `Unhiding ${photoTitle} ...`,
   });
 
   const syncPhoto = useNavigateOrRunActionWithToast({
@@ -150,6 +168,15 @@ export default function PhotoPrevNextActions({
           unfavoritePhoto();
         }
         break;
+      case KEY_COMMANDS.togglePrivate:
+        if (isUserSignedIn && photo) {
+          if (photo.hidden) {
+            unhidePhoto();
+          } else {
+            hidePhoto();
+          }
+        }
+        break;
       case KEY_COMMANDS.download:
         if (
           (isUserSignedIn || ALLOW_PUBLIC_DOWNLOADS) &&
@@ -179,6 +206,8 @@ export default function PhotoPrevNextActions({
     photo,
     favoritePhoto,
     unfavoritePhoto,
+    hidePhoto,
+    unhidePhoto,
     downloadUrl,
     downloadFileName,
     syncPhoto,
@@ -200,7 +229,7 @@ export default function PhotoPrevNextActions({
         '*:select-none',
       )}>
         <Tooltip {...SHOW_KEYBOARD_SHORTCUT_TOOLTIPS && {
-          content: 'Previous',
+          content: appText.nav.prev,
           keyCommand: KEY_COMMANDS.prev[0],
         }}>
           <PhotoLink
@@ -213,14 +242,16 @@ export default function PhotoPrevNextActions({
             prefetch
           >
             <FiChevronLeft className="sm:hidden text-[1.1rem]" />
-            <span className="hidden sm:inline-block">PREV</span>
+            <span className="hidden sm:inline-block uppercase">
+              {appText.nav.prevShort}
+            </span>
           </PhotoLink>
         </Tooltip>
         <span className="text-extra-extra-dim">
           /
         </span>
         <Tooltip {...SHOW_KEYBOARD_SHORTCUT_TOOLTIPS && {
-          content: 'Next',
+          content: appText.nav.next,
           keyCommand: KEY_COMMANDS.next[0],
         }}>
           <PhotoLink
@@ -233,7 +264,9 @@ export default function PhotoPrevNextActions({
             prefetch
           >
             <FiChevronRight className="sm:hidden text-[1.1rem]" />
-            <span className="hidden sm:inline-block">NEXT</span>
+            <span className="hidden sm:inline-block uppercase">
+              {appText.nav.nextShort}
+            </span>
           </PhotoLink>
         </Tooltip>
       </div>

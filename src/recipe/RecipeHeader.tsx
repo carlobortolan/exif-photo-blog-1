@@ -3,9 +3,10 @@
 import { Photo, PhotoDateRange } from '@/photo';
 import PhotoHeader from '@/photo/PhotoHeader';
 import PhotoRecipe from './PhotoRecipe';
-import { useAppState } from '@/state/AppState';
+import { useAppState } from '@/app/AppState';
 import { descriptionForRecipePhotos, getRecipePropsFromPhotos } from '.';
 import { AI_TEXT_GENERATION_ENABLED } from '@/app/config';
+import { useAppText } from '@/i18n/state/client';
 
 export default function RecipeHeader({
   recipe,
@@ -24,6 +25,8 @@ export default function RecipeHeader({
 }) {
   const { recipeModalProps, setRecipeModalProps } = useAppState();
 
+  const appText = useAppText();
+
   const recipeProps = getRecipePropsFromPhotos(photos, selectedPhoto);
 
   return (
@@ -32,12 +35,19 @@ export default function RecipeHeader({
       entity={<PhotoRecipe
         recipe={recipe}
         contrast="high"
+        showHover={false}
         isShowingRecipeOverlay={Boolean(recipeModalProps)}
         toggleRecipeOverlay={recipeProps
           ? () => setRecipeModalProps?.(recipeProps)
           : undefined}
       />}
-      entityDescription={descriptionForRecipePhotos(photos, undefined, count)}
+      entityDescription={descriptionForRecipePhotos(
+        photos,
+        appText,
+        undefined,
+        count,
+        dateRange,
+      )}
       photos={photos}
       selectedPhoto={selectedPhoto}
       indexNumber={indexNumber}

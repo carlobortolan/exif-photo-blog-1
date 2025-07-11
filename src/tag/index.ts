@@ -15,23 +15,23 @@ import {
   formatCount,
   formatCountDescriptive,
 } from '@/utility/string';
-import { sortCategoryByCount } from '@/category';
+import { CategoryQueryMeta, sortCategoryByCount } from '@/category';
+import { AppTextState } from '@/i18n/state';
 
 // Reserved tags
 export const TAG_FAVS   = 'favs';
-export const TAG_HIDDEN = 'hidden';
+export const TAG_PRIVATE = 'private';
 
-export type Tags = {
-  tag: string
-  count: number
-}[]
+type TagWithMeta = { tag: string } & CategoryQueryMeta;
+
+export type Tags = TagWithMeta[]
 
 export const formatTag = (tag?: string) =>
   capitalizeWords(tag?.replaceAll('-', ' '));
 
 export const getValidationMessageForTags = (tags?: string) => {
   const reservedTags = (convertStringToArray(tags) ?? [])
-    .filter(tag => isTagFavs(tag) || isTagHidden(tag))
+    .filter(tag => isTagFavs(tag) || isTagPrivate(tag))
     .map(tag => tag.toLocaleUpperCase());
   return reservedTags.length
     ? `Reserved tags: ${reservedTags.join(', ').toLocaleLowerCase()}`
@@ -41,14 +41,20 @@ export const getValidationMessageForTags = (tags?: string) => {
 export const titleForTag = (
   tag: string,
   photos:Photo[] = [],
+  appText: AppTextState,
   explicitCount?: number,
 ) => [
   formatTag(tag),
-  photoQuantityText(explicitCount ?? photos.length),
+  photoQuantityText(explicitCount ?? photos.length, appText),
 ].join(' ');
 
-export const shareTextForTag = (tag: string) =>
-  isTagFavs(tag) ? 'Favorite photos' : `Photos tagged '${formatTag(tag)}'`;
+export const shareTextForTag = (
+  tag: string,
+  appText: AppTextState,
+) =>
+  isTagFavs(tag)
+    ? appText.category.taggedFavs
+    : appText.category.taggedPhrase(formatTag(tag));
 
 export const sortTagsArray = (
   tags: string[],
@@ -89,13 +95,15 @@ export const sortTagsObjectWithoutFavs = (tags: Tags) =>
 
 export const descriptionForTaggedPhotos = (
   photos: Photo[] = [],
+  appText: AppTextState,
   dateBased?: boolean,
   explicitCount?: number,
   explicitDateRange?: PhotoDateRange,
 ) =>
   descriptionForPhotoSet(
     photos,
-    'tagged',
+    appText,
+    appText.category.taggedPhotos,
     dateBased,
     explicitCount,
     explicitDateRange,
@@ -104,13 +112,19 @@ export const descriptionForTaggedPhotos = (
 export const generateMetaForTag = (
   tag: string,
   photos: Photo[],
+  appText: AppTextState,
   explicitCount?: number,
   explicitDateRange?: PhotoDateRange,
 ) => ({
   url: absolutePathForTag(tag),
-  title: titleForTag(tag, photos, explicitCount),
-  description:
-    descriptionForTaggedPhotos(photos, true, explicitCount, explicitDateRange),
+  title: titleForTag(tag, photos, appText, explicitCount),
+  description: descriptionForTaggedPhotos(
+    photos,
+    appText,
+    true,
+    explicitCount,
+    explicitDateRange,
+  ),
   images: absolutePathForTagImage(tag),
 });
 
@@ -121,23 +135,49 @@ export const isPhotoFav = ({ tags }: Photo) => tags.some(isTagFavs);
 export const isPathFavs = (pathname?: string) =>
   getPathComponents(pathname).tag === TAG_FAVS;
 
-export const isTagHidden = (tag: string) => tag.toLowerCase() === TAG_HIDDEN;
+export const isTagPrivate = (tag: string) => tag.toLowerCase() === TAG_PRIVATE;
 
-export const addHiddenToTags = (tags: Tags, photosCountHidden = 0) =>
-  photosCountHidden > 0
+export const addPrivateToTags = (
+  tags: Tags,
+  countPrivate = 0,
+  lastModifiedPrivate = new Date(),
+) =>
+  countPrivate > 0
     ? tags
       .filter(({ tag }) => tag === TAG_FAVS)
-      .concat({ tag: TAG_HIDDEN, count: photosCountHidden })
+      .concat({
+        tag: TAG_PRIVATE,
+        count: countPrivate,
+        lastModified: lastModifiedPrivate,
+      })
       .concat(tags
         .filter(({ tag }) => tag !== TAG_FAVS)
         .sort(sortCategoryByCount),
       )
     : tags;
 
-export const convertTagsForForm = (tags: Tags = []) =>
+export const convertTagsForForm = (
+  tags: Tags = [],
+  appText: AppTextState,
+) =>
   sortTagsObjectWithoutFavs(tags)
     .map(({ tag, count }) => ({
       value: tag,
       annotation: formatCount(count),
-      annotationAria: formatCountDescriptive(count, 'tagged'),
+      annotationAria:
+        formatCountDescriptive(count, appText.category.taggedPhotos),
     }));
+
+export const limitTagsByCount = (
+  tags: Tags,
+  minimumCount: number,
+  queryToInclude?: string,
+) =>
+  tags.filter(({ tag, count }) => (
+    count >= minimumCount ||
+    isTagFavs(tag) ||
+    isTagPrivate(tag) ||
+    (queryToInclude && tag
+      .toLocaleLowerCase()
+      .includes(queryToInclude.toLocaleLowerCase()))
+  ));

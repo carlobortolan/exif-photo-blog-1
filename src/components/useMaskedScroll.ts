@@ -1,3 +1,4 @@
+import useElementHeight from '@/utility/useElementHeight';
 import {
   CSSProperties,
   RefObject,
@@ -5,6 +6,7 @@ import {
   useEffect,
   useMemo,
 } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 
 const CSS_VAR_MASK_COLOR_START = '--mask-color-start';
 const CSS_VAR_MASK_COLOR_END   = '--mask-color-end';
@@ -14,6 +16,7 @@ export default function useMaskedScroll({
   direction = 'vertical',
   fadeSize = 24,
   animationDuration = 0.3,
+  setMaxSize = true,
   hideScrollbar = true,
   // Disable when calling 'updateMask' explicitly
   updateMaskOnEvents = true,
@@ -24,12 +27,15 @@ export default function useMaskedScroll({
   direction?: 'vertical' | 'horizontal'
   fadeSize?: number
   animationDuration?: number
+  setMaxSize?: boolean
   hideScrollbar?: boolean
   scrollToEndOnMount?: boolean
 }) {
   const isVertical = direction === 'vertical';
 
-  const updateMask = useCallback(() => {
+  const containerHeight = useElementHeight(containerRef);
+
+  const _updateMask = useCallback(() => {
     const ref = containerRef?.current;
     if (ref) {
       const start = isVertical
@@ -47,20 +53,34 @@ export default function useMaskedScroll({
     }
   }, [containerRef, isVertical]);
 
+  const updateMask = useDebouncedCallback(_updateMask, 50, { leading: true });
+
+  // Update on scroll/resize
   useEffect(() => {
     const ref = containerRef?.current;
-    if (ref) {
-      updateMask();
-      if (updateMaskOnEvents) {
-        ref.onscroll = updateMask;
-        ref.onresize = updateMask;
-        return () => {
-          ref.onscroll = null;
-          ref.onresize = null;
-        };
-      }
+    if (ref && updateMaskOnEvents) {
+      ref.onscroll = updateMask;
+      ref.onresize = updateMask;
+      return () => {
+        ref.onscroll = null;
+        ref.onresize = null;
+      };
     }
   }, [containerRef, updateMask, updateMaskOnEvents]);
+
+  // Update on container height change
+  useEffect(() => {
+    if (updateMaskOnEvents) {
+      updateMask();
+    }
+  }, [containerHeight, updateMaskOnEvents, updateMask]);
+
+  // Update on mount when not responding to events
+  useEffect(() => {
+    if (!updateMaskOnEvents) {
+      updateMask();
+    }
+  }, [updateMask, updateMaskOnEvents]);
 
   useEffect(() => {
     const ref = containerRef?.current;
@@ -105,13 +125,16 @@ export default function useMaskedScroll({
       maskRepeat: 'no-repeat',
       transition,
       ...hideScrollbar && { scrollbarWidth: 'none' },
+      ...isVertical
+        ? {
+          ...setMaxSize && { maxHeight: '100%' },
+          overflowY: 'scroll',
+        } : {
+          ...setMaxSize && { maxWidth: '100%' },
+          overflowX: 'scroll',
+        },
     };
-  }, [isVertical, fadeSize, animationDuration, hideScrollbar]);
+  }, [isVertical, fadeSize, animationDuration, hideScrollbar, setMaxSize]);
 
-  const classNameMask = useMemo(() => isVertical
-    ? 'max-h-full overflow-y-scroll'
-    : 'max-w-full overflow-x-scroll'
-  , [isVertical]);
-
-  return { styleMask, classNameMask, updateMask };
+  return { styleMask, updateMask };
 }

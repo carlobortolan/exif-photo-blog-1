@@ -2,14 +2,13 @@ import { formatFocalLength } from '@/focal';
 import { getNextImageUrlForRequest } from '@/platforms/next-image';
 import { photoHasFilmData } from '@/film';
 import {
-  HIGH_DENSITY_GRID,
   IS_PREVIEW,
   SHOW_EXIF_DATA,
   SHOW_FILMS,
   SHOW_LENSES,
   SHOW_RECIPES,
 } from '@/app/config';
-import { ABSOLUTE_PATH_FOR_HOME_IMAGE } from '@/app/paths';
+import { ABSOLUTE_PATH_HOME_IMAGE } from '@/app/paths';
 import { formatDate, formatDateFromPostgresString } from '@/utility/date';
 import {
   formatAperture,
@@ -17,27 +16,26 @@ import {
   formatExposureCompensation,
   formatExposureTime,
 } from '@/utility/exif-format';
-import { parameterize } from '@/utility/string';
+import { capitalize, parameterize } from '@/utility/string';
 import camelcaseKeys from 'camelcase-keys';
 import { isBefore } from 'date-fns';
 import type { Metadata } from 'next';
 import { FujifilmRecipe } from '@/platforms/fujifilm/recipe';
 import { FujifilmSimulation } from '@/platforms/fujifilm/simulation';
 import { PhotoSyncStatus, generatePhotoSyncStatus } from './sync';
+import { AppTextState } from '@/i18n/state';
 
-// INFINITE SCROLL: FEED
-export const INFINITE_SCROLL_FEED_INITIAL =
+// INFINITE SCROLL: FULL
+export const INFINITE_SCROLL_FULL_INITIAL =
   process.env.NODE_ENV === 'development' ? 2 : 12;
-export const INFINITE_SCROLL_FEED_MULTIPLE =
+export const INFINITE_SCROLL_FULL_MULTIPLE =
   process.env.NODE_ENV === 'development' ? 2 : 24;
 
 // INFINITE SCROLL: GRID
-export const INFINITE_SCROLL_GRID_INITIAL = HIGH_DENSITY_GRID
-  ? process.env.NODE_ENV === 'development' ? 12 : 48
-  : process.env.NODE_ENV === 'development' ? 12 : 48;
-export const INFINITE_SCROLL_GRID_MULTIPLE = HIGH_DENSITY_GRID
-  ? process.env.NODE_ENV === 'development' ? 12 : 48
-  : process.env.NODE_ENV === 'development' ? 12 : 48;
+export const INFINITE_SCROLL_GRID_INITIAL =
+  process.env.NODE_ENV === 'development' ? 12 : 60;
+export const INFINITE_SCROLL_GRID_MULTIPLE =
+  process.env.NODE_ENV === 'development' ? 12 : 60;
 
 // Thumbnails below large photos on pages like /p/[photoId]
 export const RELATED_GRID_PHOTOS_TO_SHOW = 12;
@@ -86,6 +84,7 @@ export interface PhotoDbInsert extends PhotoExif {
   recipeTitle?: string
   locationName?: string
   priorityOrder?: number
+  excludeFromFeeds?: boolean
   hidden?: boolean
   takenAt: string
   takenAtNaive: string
@@ -122,9 +121,13 @@ export const parsePhotoFromDb = (photoDbRaw: PhotoDb): Photo => {
     ...photoDb,
     tags: photoDb.tags ?? [],
     focalLengthFormatted:
-      formatFocalLength(photoDb.focalLength),
+      photoDb.focalLength
+        ? formatFocalLength(photoDb.focalLength)
+        : undefined,
     focalLengthIn35MmFormatFormatted:
-      formatFocalLength(photoDb.focalLengthIn35MmFormat),
+      photoDb.focalLengthIn35MmFormat
+        ? formatFocalLength(photoDb.focalLengthIn35MmFormat)
+        : undefined,
     fNumberFormatted:
       formatAperture(photoDb.fNumber),
     isoFormatted:
@@ -170,8 +173,13 @@ export const photoStatsAsString = (photo: Photo) => [
   photo.isoFormatted,
 ].join(' ');
 
-export const descriptionForPhoto = (photo: Photo) =>
-  photo.takenAtNaiveFormatted?.toUpperCase();
+export const descriptionForPhoto = (
+  photo: Photo,
+  includeSemanticDescription?: boolean,
+) =>
+  photo.caption ||
+  (includeSemanticDescription && photo.semanticDescription) ||
+  formatDate({ date: photo.takenAt }).toLocaleUpperCase();
 
 export const getPreviousPhoto = (photo: Photo, photos: Photo[]) => {
   const index = photos.findIndex(p => p.id === photo.id);
@@ -191,11 +199,11 @@ export const generateOgImageMetaForPhotos = (photos: Photo[]): Metadata => {
   if (photos.length > 0) {
     return {
       openGraph: {
-        images: ABSOLUTE_PATH_FOR_HOME_IMAGE,
+        images: ABSOLUTE_PATH_HOME_IMAGE,
       },
       twitter: {
         card: 'summary_large_image',
-        images: ABSOLUTE_PATH_FOR_HOME_IMAGE,
+        images: ABSOLUTE_PATH_HOME_IMAGE,
       },
     };
   } else {
@@ -231,38 +239,54 @@ export const titleForPhoto = (
 export const altTextForPhoto = (photo: Photo) =>
   photo.semanticDescription || titleForPhoto(photo);
 
-export const photoLabelForCount = (count: number, capitalize = true) =>
-  capitalize
-    ? count === 1 ? 'Photo' : 'Photos'
-    : count === 1 ? 'photo' : 'photos';
+export const photoLabelForCount = (
+  count: number,
+  appText: AppTextState,
+  _capitalize = true,
+) => {
+  const label = count === 1
+    ? appText.photo.photo
+    : appText.photo.photoPlural;
+  return _capitalize
+    ? capitalize(label)
+    : label;
+};
 
 export const photoQuantityText = (
   count: number,
+  appText: AppTextState,
   includeParentheses = true,
   capitalize?: boolean,
 ) =>
   includeParentheses
-    ? `(${count} ${photoLabelForCount(count, capitalize)})`
-    : `${count} ${photoLabelForCount(count, capitalize)}`;  
+    ? `(${count} ${photoLabelForCount(count, appText, capitalize)})`
+    : `${count} ${photoLabelForCount(count, appText, capitalize)}`;  
 
-export const deleteConfirmationTextForPhoto = (photo: Photo) =>
-  `Are you sure you want to delete "${titleForPhoto(photo)}?"`;
+export const deleteConfirmationTextForPhoto = (
+  photo: Photo,
+  appText: AppTextState,
+) =>
+  appText.admin.deleteConfirm(titleForPhoto(photo));
 
 export type PhotoDateRange = { start: string, end: string };
 
 export const descriptionForPhotoSet = (
   photos:Photo[] = [],
+  appText: AppTextState,
   descriptor?: string,
   dateBased?: boolean,
   explicitCount?: number,
   explicitDateRange?: PhotoDateRange,
 ) =>
   dateBased
-    ? dateRangeForPhotos(photos, explicitDateRange).description.toUpperCase()
+    ? dateRangeForPhotos(photos, explicitDateRange)
+      .description
+      .toLocaleUpperCase()
     : [
-      explicitCount ?? photos.length,
-      descriptor,
-      photoLabelForCount(explicitCount ?? photos.length, false),
+      explicitCount ?? photos.length, (
+        descriptor ||
+        photoLabelForCount(explicitCount ?? photos.length, appText, false)
+      ),
     ].join(' ');
 
 const sortPhotosByDateNonDestructively = (
