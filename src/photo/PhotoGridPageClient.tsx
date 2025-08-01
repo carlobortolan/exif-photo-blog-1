@@ -1,39 +1,36 @@
 'use client';
 
 import { Photo } from '.';
-import { PATH_GRID_INFERRED } from '@/app/paths';
+import { PATH_GRID_INFERRED } from '@/app/path';
 import PhotoGridSidebar from './PhotoGridSidebar';
 import PhotoGridContainer from './PhotoGridContainer';
-import { ComponentProps, useEffect, useRef } from 'react';
-import { useAppState } from '@/app/AppState';
+import { ComponentProps, useMemo, useRef } from 'react';
 import clsx from 'clsx/lite';
-import useElementHeight from '@/utility/useElementHeight';
 import MaskedScroll from '@/components/MaskedScroll';
 import { IS_RECENTS_FIRST } from '@/app/config';
-import { SortBy } from './db/sort';
+import { SortBy } from './sort';
+import useViewportHeight from '@/utility/useViewportHeight';
 
 export default function PhotoGridPageClient({
   photos,
   photosCount,
+  photosCountWithExcludes,
   sortBy,
   sortWithPriority,
   ...categories
 }: ComponentProps<typeof PhotoGridSidebar> & {
   photos: Photo[]
   photosCount: number
+  photosCountWithExcludes: number
   sortBy: SortBy
   sortWithPriority: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  const { setSelectedPhotoIds } = useAppState();
-
-  useEffect(
-    () => () => setSelectedPhotoIds?.(undefined),
-    [setSelectedPhotoIds],
-  );
-
-  const containerHeight = useElementHeight(ref);
+  const viewPortHeight = useViewportHeight();
+  const containerHeight = useMemo(() =>
+    viewPortHeight - (ref.current?.getBoundingClientRect().y ?? 0),
+  [viewPortHeight]);
 
   return (
     <PhotoGridContainer
@@ -58,7 +55,7 @@ export default function PhotoGridPageClient({
         >
           <PhotoGridSidebar {...{
             ...categories,
-            photosCount,
+            photosCount: photosCountWithExcludes,
             containerHeight,
           }} />
         </MaskedScroll>

@@ -4,7 +4,7 @@ import {
   INFINITE_SCROLL_FULL_INITIAL,
   INFINITE_SCROLL_GRID_INITIAL,
 } from '../photo';
-import { SortBy } from '../photo/db/sort';
+import { SortBy } from '../photo/sort';
 import { FEED_PHOTO_REQUEST_LIMIT } from './programmatic';
 
 const FEED_BASE_QUERY_OPTIONS: PhotoQueryOptions = {
@@ -32,6 +32,13 @@ export const getFeedQueryOptions = ({
 
 export const FEED_META_QUERY_OPTIONS: PhotoQueryOptions = {
   ...FEED_BASE_QUERY_OPTIONS,
+};
+
+// APP OG IMAGE QUERY OPTIONS
+
+export const APP_OG_IMAGE_QUERY_OPTIONS: PhotoQueryOptions = {
+  ...FEED_BASE_QUERY_OPTIONS,
+  ...USER_DEFAULT_SORT_OPTIONS,
 };
 
 // PROGRAMMATIC FEED QUERY OPTIONS

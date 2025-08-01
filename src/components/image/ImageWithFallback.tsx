@@ -10,7 +10,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export default function ImageWithFallback({
   className,
   classNameImage = 'object-cover h-full',
-  forceFallbackFade = false,
   blurDataURL,
   blurCompatibilityLevel = 'low',
   priority,
@@ -18,28 +17,26 @@ export default function ImageWithFallback({
 }: ImageProps & {
   blurCompatibilityLevel?: 'none' | 'low' | 'high'
   classNameImage?: string
-  forceFallbackFade?: boolean
 }) {
-  const { shouldDebugImageFallbacks } = useAppState();
+  const ref = useRef<HTMLImageElement>(null);
+
+  const { hasLoadedWithAnimations, shouldDebugImageFallbacks } = useAppState();
 
   const [isLoading, setIsLoading] = useState(true);
   const [didError, setDidError] = useState(false);
   const [fadeFallbackTransition, setFadeFallbackTransition] =
-    useState(forceFallbackFade);
+    useState(!hasLoadedWithAnimations);
 
   const onLoad = useCallback(() => setIsLoading(false), []);
   const onError = useCallback(() => setDidError(true), []);
 
-  const isLoadingRef = useRef(isLoading);
-  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      // If image is still loading after 200ms, force CSS animation
-      if (isLoadingRef.current) {
-        setFadeFallbackTransition(true);
-      }
-    }, 200);
-    return () => clearTimeout(timeout);
+    if (
+      !ref.current?.complete ||
+      (ref.current?.naturalWidth ?? 0) === 0
+    ) {
+      setFadeFallbackTransition(true);
+    }
   }, []);
 
   const getBlurClass = () => {
@@ -59,7 +56,7 @@ export default function ImageWithFallback({
         className,
       )}
     >
-      <Image {...{
+      <Image ref={ref} {...{
         ...props,
         priority,
         className: classNameImage,
