@@ -152,13 +152,17 @@ Application behavior can be changed by configuring the following environment var
     - `taken-at-oldest-first`
     - `uploaded-at`
     - `uploaded-at-oldest-first`
-- `NEXT_PUBLIC_PRIORITY_BASED_SORTING = 1` takes priority field into account when sorting photos (⚠️ enabling may have performance consequences)
 - `NEXT_PUBLIC_NAV_SORT_CONTROL`
   - Controls sort UI on grid/full homepages
   - Accepted values:
     - `none`
     - `toggle` (default)
     - `menu`
+- Color-based sorting (experimental)
+  - `NEXT_PUBLIC_SORT_BY_COLOR = 1` enables color-based sorting (forces nav sort control to "menu," flags photos missing color data in admin dashboard)—color identification benefits greatly from AI being enabled
+  - `NEXT_PUBLIC_COLOR_SORT_STARTING_HUE` controls which colors start first (accepts a hue of 0 to 360, default: 80)
+  - `NEXT_PUBLIC_COLOR_SORT_CHROMA_CUTOFF` controls which colors are considered sufficiently vibrant (accepts a chroma of 0 to 0.37, default: 0.05):
+- `NEXT_PUBLIC_PRIORITY_BASED_SORTING = 1` takes priority field into account when sorting photos (⚠️ enabling may have performance consequences)
 
 
 #### Display
@@ -286,13 +290,13 @@ Vercel Postgres can be switched to another Postgres-compatible, pooling provider
 Partial internationalization (for non-admin, user-facing text) provided for a handful of languages. Configure locale by setting environment variable `NEXT_PUBLIC_LOCALE`.
 
 ### Supported Languages
+- `bd-bn`
 - `en-us`
+- `id-id`
 - `pt-br`
 - `pt-pt`
-- `id-id`
-- `zh-cn`
-- `bd-bn`
 - `tr-tr`
+- `zh-cn`
 
 To add support for a new language, open a PR following instructions in [/src/i18n/index.ts](https://github.com/sambecker/exif-photo-blog/blob/main/src/i18n/index.ts), using [en-us.ts](https://github.com/sambecker/exif-photo-blog/blob/main/src/i18n/locales/en-us.ts) as reference.
 
@@ -369,8 +373,8 @@ Thank you ❤️ translators: [@sconetto](https://github.com/sconetto) (`pt-br`,
 #### Can I work locally without access to an image storage provider?
 > At this time, an external storage provider is necessary in order to develop locally. If you have a strategy to propose which allows files to be locally uploaded and served to `next/image` in away that mirrors an external storage provider for debugging purposes, please open a PR.
 
-#### Can this template run in a docker image?
-> Possibly. See [Issue #116](https://github.com/sambecker/exif-photo-blog/issues/116) for discussion.
+#### Can this template be self-hosted?
+> Possibly. See [Issue #116](https://github.com/sambecker/exif-photo-blog/issues/116) and [Issue #132](https://github.com/sambecker/exif-photo-blog/issues/132) for discussion around image hosting and docker usage.
 
 #### Why am I seeing many merge conflicts when syncing my fork?
 > Previous versions of this template stored Next.js "App Router" files in `/src`, and app-level functionality in `/src/site`. If you've made customizations and are having difficulty merging updates, consider moving `/src/app` files to `/`, and renaming `src/site` to `/src/app`. Other structural changes include moving `tailwind.css` and `middleware.ts` to `/`. Additionally, it may be helpful to review [PR #195](https://github.com/sambecker/exif-photo-blog/pull/195) for an overview of the most significant changes.
